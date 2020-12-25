@@ -1,3 +1,5 @@
+This is my fork of the Grademark first example
+
 # Grademark first example
 
 A first example of a trading strategy backtested using [Grademark](https://github.com/grademark/grademark).
