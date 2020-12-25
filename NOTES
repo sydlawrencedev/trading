@@ -1,0 +1,13 @@
+Stock data
+
+https://www.alphavantage.co/documentation/
+
+https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=IBM&interval=5min&apikey=0OV8QTDPW5IYCHSN&datatype=csv
+
+
+https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=TSLA&apikey=0OV8QTDPW5IYCHSN&datatype=csv
+
+
+
+
+https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=TSLA&outputsize=full&datatype=csv&apikey=0OV8QTDPW5IYCHSN

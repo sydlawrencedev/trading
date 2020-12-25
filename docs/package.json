@@ -1,0 +1,17 @@
+{
+  "name": "web-export",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "dependencies": {
+    "leaflet": "^1.6.0",
+    "monaco-editor": "^0.18.1",
+    "normalize.css": "^8.0.0",
+    "react-leaflet": "^2.6.1"
+  }
+}

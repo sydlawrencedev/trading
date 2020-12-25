@@ -1,0 +1,63 @@
+body {
+    font-family: 'Noto Sans','Roboto', sans-serif;
+    line-height: normal;
+    user-select: none;
+    background-color: white;
+}
+
+.container {
+    max-width: 900px;
+    width: calc(100% - 160px);
+    margin: auto;
+}
+
+.code-cell-border {    
+    border: 1px dashed rgba(0, 0, 0, 0.1);
+    font-family: 'Source Code Pro', monospace !important;
+}
+
+table {
+    border: 1px solid #ddd;
+    border-collapse: collapse;
+}
+
+td, th {
+    white-space: nowrap;
+    border: 1px solid #ddd;
+    padding: 7px;
+}
+
+th {
+    background-color: #eee;
+}
+
+tbody tr td:first-of-type {
+    background-color: #eee;
+}     
+
+iframe {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.flex-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.flex-row {
+    display: flex;
+    flex-direction: row;
+}
+
+.flex-grow {
+    flex-grow: 1;
+}
+
+.flex-center-content {
+    justify-content: center;
+    align-items: center;
+}
+
