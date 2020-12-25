@@ -5,6 +5,7 @@ const settings = require('./settings');
 var stratName = settings.strategy;
 
 const strat = require('./strategies/'+stratName);
+const strategy = strat.strategy;
 
 
 const dataForge = require('data-forge');
@@ -25,8 +26,6 @@ var lastTrade = moment("1980-01-01");
 
 
 const startingCapital = settings.startingCapital;
-// This is a very simple and very naive mean reversion strategy:
-const strategy = strat.strategy;
 
 var stocks = settings.stocks;
 
@@ -42,14 +41,6 @@ log = function(text) {
     if (verbose) {
         console.log(text);
     }
-}
-
-Array.prototype.forEachAsync = async function (fn) {
-    for (let t of this) { await fn(t) }
-}
-
-function getBaseline(stock) {
-    return settings.baseline[stock];
 }
 
 function processArgs(args) {

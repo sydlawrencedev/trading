@@ -1,0 +1,2 @@
+direction,entryTime,entryPrice,exitTime,exitPrice,profit,profitPct,growth,riskPct,riskSeries,rmultiple,holdingPeriod,exitReason,stopPrice,stopPriceSeries,profitTarget
+long,2020/12/04,335.4,2020/12/08,388.8,53.400000000000034,15.92128801431128,1.1592128801431127,2.000000000000008,,7.960644007155608,1,exit-rule,328.69199999999995,,

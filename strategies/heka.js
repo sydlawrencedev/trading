@@ -1,3 +1,5 @@
+const chalk = require('chalk');
+
 module.exports = {
     addIndicators: function(inputSeries) {
         // Add whatever indicators and signals you want to your data.
