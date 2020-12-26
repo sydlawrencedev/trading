@@ -1,12 +1,10 @@
-This is my fork of the Grademark first example
+Trading
 
-# Grademark first example
+Backtesting and trading on alpaca
 
-A first example of a trading strategy backtested using [Grademark](https://github.com/grademark/grademark).
+## Keys
 
-[Click here to see this code as a notebook](https://grademark.github.io/grademark-first-example/)
-
-[Follow the developer on Twitter](https://twitter.com/ashleydavis75)
+You will need to copy ./.keys.example.js and create a new file ./.keys.js
 
 ## Try it out
 
@@ -16,23 +14,24 @@ Clone or download the repo.
 
 Change to repo's directory and install dependencies:
 ****
-    cd grademark-first-example
     npm install
 
 Now run it:
 
     node index.js
 
-Or
-
-    npm start
-
-You will see some stats printed to the console.
+This will backtest a trading strategy across a whole range of stocks and shares.
 
 settings.js
 
 You can choose which stocks you want to track, as well as which strategy you want to use.
 
-# Strategies
+## Strategies
 
 Look in the ./strategies directory for a range of strategies, you can pick which one you want to go with in the settings file
+
+## Alpaca trading
+
+node trade.js
+
+This will run through your trading strategy with all of the stocks you've added, if it finds any trades it needs to make, it currently confirms that with you as the owner.
