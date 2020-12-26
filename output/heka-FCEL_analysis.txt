@@ -1,8 +1,8 @@
 Metric                 Value
 ---------------------  -----
-startingCapital        99   
-finalCapital           242  
-profit                 143  
+startingCapital        100  
+finalCapital           245  
+profit                 145  
 profitPct              145  
 growth                 2    
 totalTrades            8    

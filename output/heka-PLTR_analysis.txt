@@ -1,8 +1,8 @@
 Metric                 Value
 ---------------------  -----
-startingCapital        99   
-finalCapital           146  
-profit                 47   
+startingCapital        100  
+finalCapital           148  
+profit                 48   
 profitPct              48   
 growth                 1    
 totalTrades            5    
@@ -17,7 +17,7 @@ profitFactor           6
 proportionProfitable   0    
 percentProfitable      40   
 returnOnAccount        10   
-averageProfitPerTrade  9    
+averageProfitPerTrade  10   
 numWinningTrades       2    
 numLosingTrades        3    
 averageWinningTrade    6    

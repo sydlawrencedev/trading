@@ -32,12 +32,25 @@ const alpaca = new Alpaca({
     usePolygon: false
 });
 
+var startingEquity = 100000;
+var maxActiveHoldings = 20;
 
 alpaca.getAccount().then((account) => {
-    console.log('Current Account:', account)
+    var color = "yellow";
+    if (account.equity > startingEquity )
+        color = "green";
+    else if (account.equity < startingEquity)
+        color = "red";
+
+    console.log(chalk[color]("Current account equity: $"+account.equity));
+
 });
 
-var usdPerPot = 1000;
+var usdPerPot = startingEquity / maxActiveHoldings;
+
+var getAmountToSpend = function() {
+    return startingEquity / maxActiveHoldings;
+}
 
 var stratName = settings.strategy;
 const strat = require('./strategies/'+stratName);
@@ -49,9 +62,11 @@ let addIndicators = strat.addIndicators;
 var stocks = settings.stocks;
 
 gotBars = function(response, moreToTry) {
+    if (moreToTry) {
+        console.log("Running algos");
+    }
     (async function() {
-        var requiresActivty = false;
-
+        var requiresActivty = false;   
         for (var j = 0; j < stocks.length; j++) {
             var stock = stocks[j];
             var df = new dataForge.DataFrame(response[stock])
@@ -79,6 +94,7 @@ gotBars = function(response, moreToTry) {
 
             for (var i = 0; i < trades.length; i++) {
                 var trade = trades[i];
+                console.log("TRADES");
                 // console.log(trade);
                 // if ((new Date(args.bar.time)).getTime() > (new Date()).getTime() - 2 * 24 * 60 * 60 * 1000) {
                 //     console.log(chalk.red(args.bar.time + " exit the position"));
@@ -93,11 +109,10 @@ gotBars = function(response, moreToTry) {
                         console.log("position");
                         console.log(position);
                         requiresActivty = true;
-                        var quantumToBuy = usdPerPot;
                         const ans = await askQuestion("Would you like to sell "+stock+"?\n");
                         if (ans.toLowerCase().indexOf("y") > -1) {
                             console.log("selling  "+stock);
-                            sellStock(stock)
+                            await sellStock(stock)
                         } else {
                             console.log("roger that");
                         }
@@ -110,11 +125,11 @@ gotBars = function(response, moreToTry) {
                     console.log(chalk.green(stock + ": enter the position"));
                     // console.log(trade);
                     requiresActivty = true;
-                    var quantumToBuy = usdPerPot;
-                    const ans = await askQuestion("Would you like to buy "+stock+"?\n");
+                    var amountToSpend = getAmountToSpend();
+                    const ans = await askQuestion("Would you like to buy $"+Math.round(amountToSpend)+" of "+stock+"?\n");
                     if (ans.toLowerCase().indexOf("y") > -1) {
                         console.log("buying "+stock);
-                        buyStock(stock, quantumToBuy / trade.entryPrice, trade.entryPrice)
+                        await buyStock(stock, amountToSpend / trade.entryPrice, trade.entryPrice)
                     } else {
                         console.log("roger that");
                     }
@@ -124,23 +139,26 @@ gotBars = function(response, moreToTry) {
                 
         }
         if (!requiresActivty && !moreToTry) {
-            console.log("No trades to perform. Have a good day!");
+            console.log(chalk.green("No trades to perform. Have a good day!"));
             process.exit();
+        } else {
+            alpaca.getBars(
+                'day',
+                stocks
+            ).then(response => {
+                gotBars(response, false);
+            });    
         }
     })()
 }
 
+console.log("getting stocks data");
 alpaca.getBars(
     'minute',
     stocks
 ).then(response => {
     gotBars(response, true);
-    alpaca.getBars(
-        'day',
-        stocks
-    ).then(response => {
-        gotBars(response, false);
-    });    
+   
 });
 
 getStock = function(stock) {
@@ -156,11 +174,11 @@ buyStock = function(stock, qty, currentPrice) {
 }
 
 orderStock = function(order, stock, qty, currentPrice) {
+    qty = Math.max(1,Math.round(qty));
     if (order == "sell") {
         var take_profit = currentPrice * 1.05;
         var stop_loss = currentPrice * 0.98;
     }
-    console.log("order "+order);
     return alpaca.createOrder({
         symbol: stock, // any valid ticker symbol
         qty: Math.max(1,Math.round(qty)),
@@ -173,8 +191,8 @@ orderStock = function(order, stock, qty, currentPrice) {
         stop_loss: {
             stop_price: stop_loss
         }, // optional,
-    }).then(order => {
-        console.log('Order', order);
+    }).then(actualOrder => {
+        console.log(chalk.green(qty + " " + stock + " "+order + " "+actualOrder.status));
     }).catch(e => {
         console.log("catch");
         console.log(e);

@@ -1,13 +1,13 @@
 Metric                 Value
 ---------------------  -----
-startingCapital        99   
-finalCapital           96   
+startingCapital        100  
+finalCapital           97   
 profit                 -3   
 profitPct              -3   
 growth                 1    
 totalTrades            10   
 barCount               13   
-maxDrawdown            -13  
+maxDrawdown            -14  
 maxDrawdownPct         -12  
 maxRiskPct             2    
 expectency             0    

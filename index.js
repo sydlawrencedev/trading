@@ -56,6 +56,29 @@ function processArgs(args) {
 
 async function getStockData(stock) {
 
+
+/*
+    alpaca.getBars(
+        'day',
+        stocks
+    ).then(response => {
+        gotBars(response, false);
+    });    
+    for (var j = 0; j < stocks.length; j++) {
+        var stock = stocks[j];
+        var df = new dataForge.DataFrame(response[stock])
+            .transformSeries({
+                startEpochTime: value => new Date(value*1000)
+            })
+        df = df.setIndex("startEpochTime") // Index so we can later merge on date.
+                .renameSeries({ startEpochTime: "time" })
+                .renameSeries({ openPrice: "open" })
+                .renameSeries({ highPrice: "high" })
+                .renameSeries({ lowPrice: "low" })
+                .renameSeries({ closePrice: "close" });
+
+        df = addIndicators(df);*/
+
     try {
         var df = dataForge.readFileSync("data/"+stock+".csv")
             .parseCSV()

@@ -62,8 +62,7 @@ var currentwsbstocks = [
     "THCB",
     "TV"
 ]
-
-
+// https://www.swaggystocks.com/dashboard/wallstreetbets/ticker-sentiment
 var stocks = [
     "SPY",
     "BABA",
@@ -102,7 +101,6 @@ var stocks = [
     "DKNG",
     "PLUG",
     "HOG",
-    "ROPE",
     "NVDA",
     "IPO",
     "IPOC",
@@ -167,10 +165,6 @@ var stocks = [
     "BLNK",
     "COST",
 ];
-
-
-
-
 
 // stocks = currentwsbstocks;
 

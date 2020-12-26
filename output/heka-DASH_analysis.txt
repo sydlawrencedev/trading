@@ -1,7 +1,7 @@
 Metric                 Value
 ---------------------  -----
-startingCapital        99   
-finalCapital           99   
+startingCapital        100  
+finalCapital           100  
 profit                 0    
 profitPct              0    
 growth                 1    
