@@ -19,7 +19,7 @@ module.exports = {
 
         const downTrendCounter = inputSeries.deflate(row => row.close).trends().counter(trend => trend < 0);
         inputSeries = inputSeries.withSeries("downTrendCounter", downTrendCounter)   // Integrate moving average into data, indexed on date.
-    
+        return inputSeries; 
     },
     strategy: {
         entryRule: (enterPosition, args) => {

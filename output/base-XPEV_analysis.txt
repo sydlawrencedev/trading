@@ -1,13 +1,13 @@
 Metric                 Value
 ---------------------  -----
-startingCapital        10000
-finalCapital           9178 
-profit                 -822 
+startingCapital        3333 
+finalCapital           3059 
+profit                 -274 
 profitPct              -8   
 growth                 1    
 totalTrades            5    
 barCount               2    
-maxDrawdown            -975 
+maxDrawdown            -325 
 maxDrawdownPct         -10  
 maxRiskPct             5    
 expectency             0    
@@ -17,7 +17,7 @@ profitFactor           1
 proportionProfitable   0    
 percentProfitable      20   
 returnOnAccount        -1   
-averageProfitPerTrade  -164 
+averageProfitPerTrade  -55  
 numWinningTrades       1    
 numLosingTrades        4    
 averageWinningTrade    5    

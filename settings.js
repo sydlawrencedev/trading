@@ -38,10 +38,55 @@ var oldwsbstocks = [
     "AMZN",
     "NFLX",
     "DIS",
-]
+];
+
+// https://www.reddit.com/r/stocks/comments/g4a598/created_a_list_of_under_valued_stocks_for_you_guys/
+// shit performance
+var sixmontholdundervalued = [
+    "COF",
+    "ADS",
+    "AAP",
+    "NEM",
+    "EMN",
+    "MYL",
+    "AGN",
+    "SIVB",
+    "ACN",
+    "EW",
+    "DXC",
+    "PPG",
+    "SCHW",
+    "BLK",
+    "LLY",
+    "JPM",
+    "ETFC",
+    "HON",
+    "CCI",
+    "MGM",
+];
+
+var biggest20202stocks = [
+    "TSLA",
+    "ZM",
+    "SE",
+    "NIO",
+    "CRWD",
+    "MRNA",
+    "PTON",
+    "QS",
+    "BILI",
+    "NET",
+    "FTCH",
+    "DKNG",
+    "RUN",
+    "FSLY",
+    "DNLI",
+    "NVAX",    
+];
+
 
 // wallstreetbet stocks from Dec 2020 https://stocks.comment.ai/trending.html
-var currentwsbstocks = [
+var dec2020wsbstocks = [
     "PLTR",
     "BABA",
     "GME",
@@ -62,8 +107,56 @@ var currentwsbstocks = [
     "THCB",
     "TV"
 ]
+
+var sydStocks = [
+    "DVAX",
+    "APHA",
+    "PLTR",
+    "PLUG",
+    "BABA",
+    // "TSLA",
+    "NIO",
+    "ACB",
+    "GME",
+    "AI",
+    "CRSR",
+
+    "SPCE",
+    "TLRY",
+    "FCEL",
+    "LAZR",
+    "CIIC",
+    "SOL",
+    "QS",
+    "JMIA",
+    "XPEV"
+]
 // https://www.swaggystocks.com/dashboard/wallstreetbets/ticker-sentiment
-var stocks = [
+var stocks = allStocks = [
+    "JMIA",
+    "BLNK",
+    "PYPL",
+    "FCEL",
+    "GS",
+    "STAR",
+    "IWM",
+    "MAS",
+    "LI",
+    "SBE",
+    "ELF",
+    "UBER",
+    "SBUX",
+    "MP",
+    "CPA",
+    "PDD",
+    "ARKW",
+    "ECON",
+    "RIG",
+    "KO",
+    "TQQQ",
+    "JNJ",
+    "FDX",
+    "COST",
     "SPY",
     "BABA",
     "TSLA",
@@ -140,46 +233,34 @@ var stocks = [
     "ARKQ",
     "GE",
     "NFLX",
-    "PYPL",
-    "FCEL",
-    "GS",
-    "STAR",
-    "IWM",
-    "MAS",
-    "LI",
-    "SBE",
-    "ELF",
-    "UBER",
-    "SBUX",
-    "MP",
-    "CPA",
-    "IQ",
-    "PDD",
-    "ARKW",
-    "ECON",
-    "RIG",
-    "KO",
-    "TQQQ",
-    "JNJ",
-    "FDX",
-    "BLNK",
-    "COST",
+    
 ];
 
-// stocks = currentwsbstocks;
+// past stocks: sydStocks
+// future stocks: dec2020wsbstocks
+stocks = sydStocks;
+// stocks = biggest20202stocks;
+// stocks = allStocks;
+// stocks = bearStocks;
+// stocks = oldwsbstocks;
 
+// stocks = dec2020wsbstocks;
+// stocks = ["TLRY"];
 var keys = require("./.keys");
 module.exports = {   
-    strategy: "heka",
+    strategy: "test",
+    strategy: "holdall",
+    comparisons: ["h3ka", "rsi", "sma", "ema", "bollinger", "trendwatcher", "holdall"],
+    comparisons: ["h3ka"],
     alphavantagekey: keys.alphavantage.key,
     alpaca: keys.alpaca,
     stocks: stocks,
-    // stocks: ["PFE"],
+    // stocks: ["ZM"],
     startingCapital: 10000 / stocks.length,
     baseAlgoProfit: 1361834748,
-    verbose: false,
+    verbose: (stocks.length == 1) ? true : false,
     timeWindow: {
-        start: "2020-06-01",
+        start: "2020-10-01",
         end: "2020-12-25"
     }
 }

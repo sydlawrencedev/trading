@@ -1,0 +1,2 @@
+direction,entryTime,entryPrice,exitTime,exitPrice,profit,profitPct,growth,riskPct,riskSeries,rmultiple,holdingPeriod,exitReason,stopPrice,stopPriceSeries,profitTarget,entry,open,high,low,close,volume,time,longTermDirection,upTrendCounter,downTrendCounter,longSma,shortSma,longEma,shortEma,rsi
+1,2020/12/10,99.48,2020/12/24,161,61.519999999999996,61.84157619622034,1.6184157619622035,,,,10,finalize,,,,[object Object],4.1,4.24,4.045,4.16,2129852,2020-11-13T00:00:00.000Z,1,6,0,,4.135714285714285,,4.253929627088319,55.111111111111114

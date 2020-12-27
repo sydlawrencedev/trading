@@ -1,17 +1,29 @@
 const settings = require('./settings');
+const chalk = require('chalk');
 
-
+chalk.colorize = function(val, base, str) {
+    if (val > base) {
+        return chalk.bgGreen(chalk.black(str))
+    } else if (val < base) {
+        return chalk.bgRed(chalk.white(str))
+    } else {
+        return chalk.bgYellow(chalk.black(str))
+    }
+}
 
 var stratName = settings.strategy;
-
-const strat = require('./strategies/'+stratName);
+var strat;
+try {
+    strat = require('./strategies/'+stratName);
+} catch (e) {
+    console.log(chalk.red("ERROR: Cannot find strategy: ./strategies/"+stratName));
+    process.exit();
+}
 const strategy = strat.strategy;
-
 
 const dataForge = require('data-forge');
 require('data-forge-fs'); // For loading files.
 require('data-forge-indicators'); // For the moving average indicator.
-const chalk = require('chalk');
 const axios = require('axios');
 const { plot } = require('plot');
 require('@plotex/render-image')
@@ -78,27 +90,54 @@ async function getStockData(stock) {
                 .renameSeries({ closePrice: "close" });
 
         df = addIndicators(df);*/
-
+    var df;
     try {
-        var df = dataForge.readFileSync("data/"+stock+".csv")
+
+        f = fs.readFileSync("data/"+stock+".csv");
+        if (f.length == 0 || f.toString()[0] === "{") {
+            await fs.unlinkSync("data/"+stock+".csv");
+        }
+
+        df = dataForge.readFileSync("data/"+stock+".csv")
             .parseCSV()
             .parseDates("timestamp", "YYYY-MM-DD");
+
+        if (df.getSeries("timestamp").count() < 3) {
+            await fs.unlinkSync("data/"+stock+".csv");
+            fwqffqwf();
+
+        }
     } catch (e) {
         var url = "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol="+stock+"&outputsize=full&datatype=csv&apikey="+settings.alphavantagekey;
-         
 
-        await axios({
+        var response = await axios({
             method: "get",
             url: url,
             responseType: "stream"
-        }).then(async function (response) {
-            // if (response.)
-            // return;
-            await response.data.pipe(fs.createWriteStream("data/"+stock+".csv"));
-        });
-
+        })
         console.log("Downloaded stock data for " + stock);
-        return getStockData(stock);
+        // console.log(response.data.response);
+        console.log(response.status);
+        if (response.status == 200) {
+            console.log("Downloaded stock data for " + stock);
+            // console.log(response.data);
+            try {
+                await fs.unlinkSync("data/"+stock+".csv");
+            } catch (e) {
+
+            }
+            var s = await response.data.pipe(fs.createWriteStream("data/"+stock+".csv"));
+            
+            df = await dataForge.readFileSync("data/"+stock+".csv")
+                .parseCSV()
+                .parseDates("timestamp", "YYYY-MM-DD");
+        } else {
+            console.log("Failed to download stock data for " + stock);
+            console.log("ERROR");
+            
+            process.exit();
+            return
+        }
     }
     
 
@@ -120,8 +159,18 @@ async function getStockData(stock) {
 
 let addIndicators = strat.addIndicators;
 
-function saveTrades(stock, trades) {
-    new dataForge.DataFrame(trades)
+function saveTrades(stock, strategyName, trades) {
+
+    trades = trades.map((trade,i) => {
+        trade.entry = strat.opens[i];
+        // trade.exit = strat.exits[i];
+        for (var j in strat.opens[i]) {
+            trade[j] = strat.opens[i][j];
+        }
+        return trade;
+    });
+
+    var trades = new dataForge.DataFrame(trades)
         .transformSeries({
             entryTime: d => {
                 if (d < firstTrade) firstTrade = d;
@@ -129,23 +178,19 @@ function saveTrades(stock, trades) {
                 return moment(d).format("YYYY/MM/DD")
             },
             exitTime: d => moment(d).format("YYYY/MM/DD"),
-        })
+        });
+    trades
         .asCSV()
-        .writeFileSync("./output/"+stratName+"-"+stock+"_trades.csv");
+        .writeFileSync("./output/"+strategyName+"-"+stock+"_trades.csv");
+    if (stratName === strategyName) {
+        log("trades saved > "+"./output/"+strategyName+"-"+stock+"_trades.csv")
+        console.log(trades);
+    }
 }
 
-function analyzeTrades(stock, trades) {
+function analyzeTrades(stock, strategyName, trades) {
     log("Analyzing...");
     const analysis = analyze(startingCapital, trades);
-    // console.log(analysis);
-    // console.log(trades);
-
-
-    // if (trades[0].entryTime === undefined) {
-    //     console.log(chalk.red("oh no! entry time is undefined for " + stock));
-    //     console.log(df);
-    // }
-
     const analysisTable = new Table();
 
     for (const key of Object.keys(analysis)) {
@@ -155,14 +200,16 @@ function analyzeTrades(stock, trades) {
     }
 
     const analysisOutput = analysisTable.toString();
-    log(analysisOutput);
-    const analysisOutputFilePath = "output/"+stratName+"-"+stock+"_analysis.txt";
+    if (stratName == strategyName) {   
+        log(analysisOutput);
+    }
+    const analysisOutputFilePath = "output/"+strategyName+"-"+stock+"_analysis.txt";
     fs.writeFileSync(analysisOutputFilePath, analysisOutput);
     log(">> " + analysisOutputFilePath);
     return analysis;
 }
 
-async function plotGraphs(stock, trades, inputSeries) {
+async function plotGraphs(stock, stratName, trades, inputSeries) {
     log("Plotting...");
    
     const close = inputSeries.getSeries("close").toPairs();
@@ -190,7 +237,7 @@ async function plotGraphs(stock, trades, inputSeries) {
 
     console.log(await terminalImage.file(equityCurveOutputFilePath));
 
-
+    return;
     const equityCurvePctOutputFilePath = "output/"+stratName+"-"+stock+"_my-equity-curve-pct.png";
     const equityPct = equityCurve.map(v => ((v - startingCapital) / startingCapital) * 100);
     await plot(equityPct, { chartType: "area", y: { label: "Equity %" }})
@@ -210,31 +257,43 @@ async function plotGraphs(stock, trades, inputSeries) {
     console.log(">> " + drawdownPctOutputFilePath);
 }
 
-async function backtestStock(stock, skipGraphs, strat) {
-    if (strat == undefined) {
-        strat = strategy;
-    }
-    log("Loading and preparing data.");
-
+async function backtestSpecificStrategy(strategyName, stock) {
     let inputSeries = await getStockData(stock);
-    inputSeries = addIndicators(inputSeries);
-    
-    log("Backtesting...");
-    var trades = [];
+    var strategy = require("./strategies/"+strategyName);
     try {
-        test = backtest(strat, inputSeries);
-        trades = test;
+        inputSeries = strategy.addIndicators(inputSeries);
     } catch (e) {
-
+        console.log(chalk.red("Error in strategy "+strategyName + " : "+stock + " " +inputSeries.count(),e.error))
+        console.log(e.message);
     }
-
-    saveTrades(stock, trades);
-    analysis = analyzeTrades(stock, trades, inputSeries);
-
+    var trades = [];
+    if (inputSeries.count() > 0) {
+        trades = await backtest(strategy.strategy, inputSeries);
+    }
+    
+    var analysis = analyzeTrades(stock, strategyName, trades, inputSeries);
+    saveTrades(stock, strategyName, trades);
     return {
-        dataSeries: inputSeries,
-        analysis: analysis, 
-        trades: trades
+        name: strategyName,
+        trades: trades,
+        analysis: analysis,
+        series: inputSeries
+    }
+}
+
+async function backtestStock(stock, skipGraphs, strat) {
+    log("Backtesting " + stock + "...");
+    var results = await backtestSpecificStrategy(stratName, stock);
+    var comparisons = [];
+    for (var i = 0; i < settings.comparisons.length; i++) {
+        var rc = await backtestSpecificStrategy(settings.comparisons[i], stock);
+        comparisons.push(rc)
+    }
+    return {
+        dataSeries: results.series,
+        analysis: results.analysis, 
+        trades: results.trades,
+        comparisons: comparisons
     }
 }
 
@@ -243,65 +302,81 @@ async function main() {
     marketProfit = 0;
     baseAlgoProfit = 0;
     totalTrades = 0;
+    comparisonProfit = [];
 
     console.log("Starting capital: $" + Math.round(settings.startingCapital * settings.stocks.length));
     console.log("Assigned $"+Math.round(settings.startingCapital) + " per ticker, across "+settings.stocks.length+" tickers")
         
     console.log("Trading window: " + settings.timeWindow.start + " -> " + settings.timeWindow.end)
 
+    console.log("Strategy in place: "+chalk.yellow(stratName));
+    console.log("Comparison strategies: "+settings.comparisons.join(", "));
+
     var myArgs = process.argv.slice(2);
     var options = processArgs(myArgs);;
-
+    var allResults = [];
     for (const stock of stocks) {
         await backtestStock(stock, false).then(function(results) {
-            // var baseline = getBaseline(stock);
-            // if (baseline > 0 || baseline < 0) {
-            //     baseAlgoProfit += baseline;
-            // }
-
+            allResults.push({
+                stock: stock,
+                results: results
+            });
             totalTrades += results.analysis.totalTrades;
             totalProfit += profit = Math.round(results.analysis.profit);
-            var hasValues = false;
-            try {
-                results.dataSeries.first();
-                hasValues = true;
-            } catch (e) {
-                market = 0;
+
+            var cps = [];
+            var cpstr = [];
+            for (var i = 0; i < results.comparisons.length; i++) {
+                
+                if (comparisonProfit[results.comparisons[i].name] == undefined) {
+                    comparisonProfit[results.comparisons[i].name] = 0
+                }
+                comparisonProfit[results.comparisons[i].name] += cp = Math.round(results.comparisons[i].analysis.profit);
+                var str = results.comparisons[i].name + ": "+cp
+                cps.push(cp);
+                cpstr.push(chalk.colorize(profit, cp, str));
             }
-            if (hasValues) {
-                marketProfit += market = Math.round((settings.startingCapital / results.dataSeries.first().open) * results.dataSeries.last().close - settings.startingCapital);
-            }        
-            // if (isNaN(baseline) || baseline == false) {
-            //     console.log(chalk.bgRed("No baseline for " + stock));
-            //     backtestStock(stock, false, require("./strategies/base").strategy).then(function(results) {
-            //         console.log(chalk.cyan(stock+" baseline = " +Math.round(results.analysis.profit)));
-            //     })
-            // } else {
-            if (Math.round(profit) == Math.round(market)) {
-                console.log(chalk.yellow(stock+" Equal: " + Math.round(profit) + " vs " + Math.round(market) + " across " + results.analysis.totalTrades + " trades"));
+
+            var text = stock +": " + profit +" across " + results.analysis.totalTrades + " trades ("
+
+            var bestComparison = Math.max(...cps);
+
+            if (Math.round(profit) == Math.round(bestComparison)) {
+                text = chalk.yellow(text);
             }
-            if (Math.round(profit) > Math.round(market)) {
+            else if (Math.round(profit) > Math.round(bestComparison)) {
                 if (Math.round(profit) > 0) {
-                    console.log(chalk.bgGreen(chalk.black(stock+" More: " + Math.round(profit) + " vs " + Math.round(market) + " across " + results.analysis.totalTrades + " trades")));
+                    text = chalk.bgGreen(chalk.black(text));
                 } else {
-                    console.log(chalk.bgYellow(chalk.black(stock+" More: " + Math.round(profit) + " vs " + Math.round(market) + " across " + results.analysis.totalTrades + " trades")));
+                    text = chalk.bgYellow(chalk.black(text));
                 }
             }
-            if (Math.round(profit) < Math.round(market)) {
+            else if (Math.round(profit) < Math.round(bestComparison)) {
                 if (profit < 0) {
-                    console.log(chalk.bgYellow(chalk.black(stock+" Less: " + Math.round(profit) + " vs " + Math.round(market) + " across " + results.analysis.totalTrades + " trades")));
+                    text = chalk.bgYellow(chalk.black(text));
                 } else {
-                    console.log(chalk.bgRed(stock+" Less: " + Math.round(profit) + " vs " + Math.round(market) + " across " + results.analysis.totalTrades + " trades"));
-                }
+                    text = chalk.bgRed(chalk.white(text));
+                } 
             }
-            // }
-            // if (profit > market) {
-            //     console.log(chalk.green("     " + Math.round(results.analysis.profit) + " across " + results.analysis.totalTrades + " trades ("+Math.round(market)+")"));
-            // } else {
-            //     console.log(chalk.red("     " + Math.round(results.analysis.profit) + " across " + results.analysis.totalTrades + " trades ("+Math.round(market)+")"));
-            // }
-            if(stocks.length == 1) 
-                plotGraphs(stock, results.trades, results.dataSeries);
+
+            text += cpstr.join(", ") + ")";
+            console.log(text);
+
+            if(stocks.length == 1)  {
+
+                
+
+                var losses = results.trades.filter(trade => trade.profit < 0)
+               
+                
+                // console.log(losses[0]);
+                // console.log(strat.opens);
+                console.log(losses.length + " losses");
+                // return;
+
+                plotGraphs(stock, stratName, results.trades, results.dataSeries);
+
+            }
         }).catch(err => {
             console.error("An error occurred.");
             console.error(err && err.stack || err);
@@ -309,27 +384,49 @@ async function main() {
     }
 
     // backtestStock(stock, options.f);
-  
+    return {
+        results: allResults,
+        totalProfit: totalProfit,
+        comparisonProfit: comparisonProfit
+    }
 };
 
 main()
-    .then(() => {
+    .then(results => {
 
+        console.log("Strategy "+stratName)
         console.log("Profit of $"+Math.round(totalProfit))
         console.log("Across "+ totalTrades + " trades starting " + moment(firstTrade).format("DD/MM/YYYY") + ", last trade: "+ moment(lastTrade).format("DD/MM/YYYY"));
         console.log("Final pot of $"+Math.round(totalProfit + settings.startingCapital * settings.stocks.length))
-
-        console.log("Passively traded would be $"+Math.round(marketProfit + settings.startingCapital * settings.stocks.length))
+        
+        var winner = {
+            name: "",
+            profit: -1000000
+        };
+        for (var i in results.comparisonProfit) {
+            if (results.comparisonProfit[i] > winner.profit) {
+                winner.name = i;
+                winner.profit = results.comparisonProfit[i];
+            }
+        }
+        
+        var marketProfit = winner.profit;
 
         if (Math.round(totalProfit) == Math.round(marketProfit)) {
-            console.log(chalk.bgRed("  ")+chalk.bgYellow(chalk.black(" Same as market: " + Math.round(totalProfit) + " vs " + Math.round(marketProfit))+" ")+chalk.bgRed("  "));
+            console.log(chalk.bgRed("  ")+chalk.bgYellow(chalk.black(" Same as top strategy ("+winner.name+"): " + Math.round(totalProfit) + " vs " + Math.round(marketProfit))+" ")+chalk.bgRed("  "));
         }
         if (Math.round(totalProfit) > Math.round(marketProfit)) {
-            console.log(chalk.bgYellow("  ")+chalk.bgGreen(chalk.black(" More than market: " + Math.round(totalProfit) + " vs " + Math.round(marketProfit))+" ")+chalk.bgYellow("  "));
+            console.log(chalk.bgYellow("  ")+chalk.bgGreen(chalk.black(" More than top strategy ("+winner.name+"): " + Math.round(totalProfit) + " vs " + Math.round(marketProfit))+" ")+chalk.bgYellow("  "));
         }
         if (Math.round(totalProfit) < Math.round(marketProfit)) {
-            console.log(chalk.bgYellow("  ")+chalk.bgRed(" Less than market: " + Math.round(totalProfit) + " vs " + Math.round(marketProfit)+" ")+chalk.bgYellow("  "));
+            console.log(chalk.bgYellow("  ")+chalk.bgRed(" Less than winning strategy ("+winner.name+"): " + Math.round(totalProfit) + " vs " + Math.round(marketProfit)+" ")+chalk.bgYellow("  "));
         }
+        var text = []
+        for (var i in results.comparisonProfit) {
+            text.push(chalk.colorize(totalProfit, results.comparisonProfit[i], i + " "+ results.comparisonProfit[i]));
+        }
+        console.log(text.join(", "));
+
 
     })
     .catch(err => {

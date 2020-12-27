@@ -1,15 +1,12 @@
-module.exports = {
+module.exports = strategy = {
+    opens: [],
+    exits: [],
     addIndicators: function(inputSeries) {
         // Add whatever indicators and signals you want to your data.
-        // const daysFalling = inputSeries.deflate(row => row.close).daysFalling();
-        // inputSeries = inputSeries.withSeries("daysFalling", daysFalling);
-
-        const daysRising = inputSeries.deflate(row => row.close).daysRising();
-        inputSeries = inputSeries.withSeries("daysRising", daysRising);
-
+       
         const direction = inputSeries.deflate(row => row.close).direction(3);
         inputSeries = inputSeries.withSeries("direction", direction)   // Integrate moving average into data, indexed on date.
-            
+        
         const longTermDirection = inputSeries.deflate(row => row.close).direction(20);
         inputSeries = inputSeries.withSeries("longTermDirection", longTermDirection)   // Integrate moving average into data, indexed on date.
 
@@ -19,14 +16,22 @@ module.exports = {
         const downTrendCounter = inputSeries.deflate(row => row.close).trends().counter(trend => trend < 0);
         inputSeries = inputSeries.withSeries("downTrendCounter", downTrendCounter)   // Integrate moving average into data, indexed on date.
         
-        const movingAverage = inputSeries
-            .deflate(bar => bar.close)          // Extract closing price series.
-            .sma(30);                           // 30 day moving average.
+        const longSma = inputSeries.deflate(bar => bar.close).sma(30);                           // 30 day moving average.
+        inputSeries = inputSeries.withSeries("longSma", longSma) 
+
+        const shortSma = inputSeries.deflate(bar => bar.close).sma(7);                           // 30 day moving average.
+        inputSeries = inputSeries.withSeries("shortSma", shortSma) 
         
-        inputSeries = inputSeries
-            .withSeries("sma", movingAverage)   // Integrate moving average into data, indexed on date.
-            .skip(30)                           // Skip blank sma entries.
-        
+        try {
+            const longEma = inputSeries.deflate(bar => bar.close).ema(30);                           // 30 day moving average.
+            inputSeries = inputSeries.withSeries("longEma", longEma)
+
+            const shortEma = inputSeries.deflate(bar => bar.close).ema(7);                           // 30 day moving average.
+            inputSeries = inputSeries.withSeries("shortEma", shortEma)
+        } catch (e) {}
+        const rsi = inputSeries.deflate(row => row.close).rsi(14);
+        inputSeries = inputSeries.withSeries("rsi", rsi)
+
         return inputSeries;
     },
     strategy: {
@@ -37,28 +42,48 @@ module.exports = {
                 return;
             }
             
+            var toEnter = false;
             // if uptrend > 3 buy
             if (
                 args.bar.longTermDirection > 0
                 && args.bar.direction > 0
                 && args.bar.upTrendCounter > 3
+                && args.bar.upTrendCounter < 10
+                && args.bar.rsi < 80
             ) {
+                toEnter = true;
+            } else if (
+               args.bar.rsi < 20
+               && args.bar.downTrendCounter > 10
+            ) {
+                toEnter = true;
+            }
+
+            if (toEnter) {
                 enterPosition();
+                strategy.opens.push(args.bar);
             }
         },
 
         exitRule: (exitPosition, args) => {
-            // if profit > 5%
-            if (args.position.profitPct > 5) {                
-                exitPosition();
+            
+            var exiting = false;
+            if (args.bar.rsi > 90) {
+                exiting = true;
+            // } else if (args.position.profitPct > 5) {                
+                // exiting = true;
+            } else if (args.bar.downTrendCounter >= 2) {
+                exiting = true;
             }
-            else if (args.bar.downTrendCounter >= 1) {
+
+            if (exiting) {
                 exitPosition();
+                strategy.exits.push(args.bar);
             }
         },
 
         stopLoss: args => { // Intrabar stop loss.
-            return args.entryPrice * (2/100); // Stop out on 2% loss from entry price.
+            return args.entryPrice * (3/100); // Stop out on 2% loss from entry price.
         }
     }
 };
