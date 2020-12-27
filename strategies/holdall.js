@@ -1,15 +1,12 @@
 module.exports = {
-    addIndicators: function(inputSeries) {
+    name: "holdall",
+    addIndicators: inputSeries => {
         return inputSeries;
     },
-    strategy: {
-        entryRule: (enterPosition, args) => {
-            // hold all
-            enterPosition();
-        },
-
-        exitRule: (exitPosition, args) => {
-            // never exit
-        },
+    buySignal: args => {
+        return 1000000;
+    },
+    sellSignal: args => {
+        return -1000000;
     }
 };

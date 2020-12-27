@@ -1,6 +1,44 @@
-module.exports = strategy = {
-    opens: [],
-    exits: [],
+module.exports = {
+    name: "Test Strategy",
+    stopLoss: -0.03, // Stop out on 3% loss from entry price.
+    buySignal: indicators => {
+
+        if (indicators.upTrendCounter == 25033) {
+            console.log("is the data formatted correctly?");
+            console.log("timestamp,open,high,low,close,volume");
+            return 0;
+        }
+        
+        var buySignal = 0;
+        if (
+            indicators.longTermDirection > 0
+            && indicators.direction > 0
+            && indicators.upTrendCounter > 3
+            && indicators.upTrendCounter < 10
+            && indicators.rsi < 80
+        ) {
+            buySignal += indicators.upTrendCounter * 10;
+        } else if (
+            indicators.rsi < 20
+           && indicators.downTrendCounter > 10
+        ) {
+            buySignal += indicators.rsi;
+        }
+
+        return buySignal;
+    },
+
+    sellSignal: indicators => {
+        var sellSignal = 0;
+        if (indicators.rsi > 90) {
+            sellSignal += 100;
+        }
+        if (indicators.downTrendCounter >= 2) {
+            sellSignal += 50;
+        }
+        return sellSignal;
+    },
+
     addIndicators: function(inputSeries) {
         // Add whatever indicators and signals you want to your data.
        
@@ -34,56 +72,4 @@ module.exports = strategy = {
 
         return inputSeries;
     },
-    strategy: {
-        entryRule: (enterPosition, args) => {
-            if (args.bar.upTrendCounter == 25033) {
-                console.log("is the data formatted correctly?");
-                console.log("timestamp,open,high,low,close,volume");
-                return;
-            }
-            
-            var toEnter = false;
-            // if uptrend > 3 buy
-            if (
-                args.bar.longTermDirection > 0
-                && args.bar.direction > 0
-                && args.bar.upTrendCounter > 3
-                && args.bar.upTrendCounter < 10
-                && args.bar.rsi < 80
-            ) {
-                toEnter = true;
-            } else if (
-               args.bar.rsi < 20
-               && args.bar.downTrendCounter > 10
-            ) {
-                toEnter = true;
-            }
-
-            if (toEnter) {
-                enterPosition();
-                strategy.opens.push(args.bar);
-            }
-        },
-
-        exitRule: (exitPosition, args) => {
-            
-            var exiting = false;
-            if (args.bar.rsi > 90) {
-                exiting = true;
-            // } else if (args.position.profitPct > 5) {                
-                // exiting = true;
-            } else if (args.bar.downTrendCounter >= 2) {
-                exiting = true;
-            }
-
-            if (exiting) {
-                exitPosition();
-                strategy.exits.push(args.bar);
-            }
-        },
-
-        stopLoss: args => { // Intrabar stop loss.
-            return args.entryPrice * (3/100); // Stop out on 2% loss from entry price.
-        }
-    }
 };

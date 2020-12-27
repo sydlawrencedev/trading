@@ -31,6 +31,9 @@ module.exports = {
 
         return inputSeries;
     },
+    addBuySingal: function(inputSeries) {
+
+    }
     strategy: {
         entryRule: (enterPosition, args) => {
             if (args.bar.upTrendCounter == 25033) {

@@ -42,7 +42,8 @@ alpaca.getAccount().then((account) => {
     else if (account.equity < startingEquity)
         color = "red";
 
-    console.log(chalk[color]("Current account equity: $"+account.equity));
+        console.log(account);
+        console.log(chalk[color]("Current account equity: $"+account.equity));
 
 });
 

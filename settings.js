@@ -245,11 +245,11 @@ stocks = sydStocks;
 // stocks = oldwsbstocks;
 
 // stocks = dec2020wsbstocks;
-// stocks = ["TLRY"];
+stocks = ["TLRY", "PLUG"];
 var keys = require("./.keys");
 module.exports = {   
     strategy: "test",
-    strategy: "holdall",
+    // strategy: "holdall",
     comparisons: ["h3ka", "rsi", "sma", "ema", "bollinger", "trendwatcher", "holdall"],
     comparisons: ["h3ka"],
     alphavantagekey: keys.alphavantage.key,
