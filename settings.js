@@ -1,3 +1,5 @@
+
+
 // bear stocks
 var bearStocks = [
     "FCEL",
@@ -43,20 +45,21 @@ var oldwsbstocks = [
 // https://www.reddit.com/r/stocks/comments/g4a598/created_a_list_of_under_valued_stocks_for_you_guys/
 // shit performance
 var sixmontholdundervalued = [
+    "AGN",
+    "BLK",
+    "DXC",
     "COF",
     "ADS",
     "AAP",
     "NEM",
     "EMN",
     "MYL",
-    "AGN",
     "SIVB",
     "ACN",
     "EW",
     "DXC",
     "PPG",
     "SCHW",
-    "BLK",
     "LLY",
     "JPM",
     "ETFC",
@@ -236,31 +239,67 @@ var stocks = allStocks = [
     
 ];
 
+mikestocks = [
+    "CCL",
+    "PYPL",
+    "FLIR",
+    "SPY",
+    "APA",
+    "OXY",
+    "DVN",
+    "DISH",
+    "FTI",
+    "HWM",
+    "ETSY",
+    "ROL",
+    "CTAS",
+    "NFLX",
+    "PAYX",
+    "FE",
+    "MS",
+    "TWLO"
+];
+  
+
 // past stocks: sydStocks
 // future stocks: dec2020wsbstocks
 stocks = sydStocks;
 // stocks = biggest20202stocks;
 // stocks = allStocks;
-// stocks = bearStocks;
+stocks = bearStocks;
 // stocks = oldwsbstocks;
-
+stocks = sixmontholdundervalued;
 // stocks = dec2020wsbstocks;
-stocks = ["TLRY", "PLUG"];
+// stocks = ["NIU", "GME", "BABA", "JMIA", "PLUG", "XPEV", "PLTR", "FCEL", "SOL", "AMZN", "TSLA", "MSFT", "ZM", "WORK"];
+
+
+stocks = mikestocks;
+
 var keys = require("./.keys");
-module.exports = {   
-    strategy: "test",
-    // strategy: "holdall",
+settings = {   
+    strategy: "mike",
+    // strategy: "sma",
     comparisons: ["h3ka", "rsi", "sma", "ema", "bollinger", "trendwatcher", "holdall"],
     comparisons: ["h3ka"],
     alphavantagekey: keys.alphavantage.key,
     alpaca: keys.alpaca,
     stocks: stocks,
+    supportPartialShares: false,
     // stocks: ["ZM"],
-    startingCapital: 10000 / stocks.length,
+    startingCapital: 100000,
     baseAlgoProfit: 1361834748,
     verbose: (stocks.length == 1) ? true : false,
+    verbose: true,
     timeWindow: {
-        start: "2020-10-01",
-        end: "2020-12-25"
-    }
+        start: "2020-02-01",
+        end: "2020-10-01"
+    },
+    thresholds: {
+        buy: 0,
+        sell: 0
+    },
+    maxTradesOpen: Math.min(20,stocks.length + 1),
+    cashBaseWeighting: 50
 }
+
+module.exports = settings;

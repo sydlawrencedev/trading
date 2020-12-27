@@ -74,25 +74,31 @@ async function main() {
     var options = processArgs(myArgs);;
     var allResults = [];
 
-    await trader
-        .addStrategyByName(settings.strategy);
+    log("Strategy: " + chalk.yellow(settings.strategy))
+    await trader.addStrategyByName(settings.strategy);
+    log("Adding " + stocks.length + " stocks")
     await trader.addStocks(stocks);
+    log("About to commence backtesting")
     await trader.backtest();
 
-    trader.portfolio.calculate();
-    console.log(trader.portfolio.equityHolding);
+    return trader;
 }
 
 
 main()
     .then(results => {
 
-        
+        trader.portfolio.calculate();
+        console.log("Portfolio value: ",trader.portfolio.portfolioValue);   
+
+        var profit = trader.portfolio.getProfit();
+
+        console.log(chalk.colorize(profit,0,"Total Profit: $"+profit));   
 
 
     })
     .catch(err => {
-        console.error("An error occurred.");
+        console.error(chalk.red("An error occurred."));
         console.error(err && err.stack || err);
     });
 

@@ -26,10 +26,14 @@ var  MarketData = {
     
             }
             var s = await response.data.pipe(fs.createWriteStream("data/"+stockTicker+".csv"));
-            
-            df = await dataForge.readFileSync("data/"+stockTicker+".csv")
-                .parseCSV()
-                .parseDates("timestamp", "YYYY-MM-DD");
+            try { 
+                df = await dataForge.readFileSync("data/"+stockTicker+".csv")
+                    .parseCSV()
+                    .parseDates("timestamp", "YYYY-MM-DD");
+            } catch (e) {
+                var single = await this.fetchHistoricSingle(stockTicker);
+                return single;
+            }
         } else {
             console.log(response);
             console.log(url);
@@ -62,9 +66,9 @@ var  MarketData = {
           
         df = df.parseFloats(["open", "high", "low", "close", "volume"])
     
-        df = df.setIndex("timestamp") // Index so we can later merge on date.
+        df = df // Index so we can later merge on date.
             .reverse()
-            .renameSeries({ timestamp: "time" });
+            .renameSeries({ timestamp: "time" }).setIndex("time");
         df = df.where(row => row.time > moment(settings.timeWindow.start));
         df = df.where(row => row.time < moment(settings.timeWindow.end));
     

@@ -1,6 +1,9 @@
+var data_forge_1 = require("data-forge");
+
 module.exports = {
     name: "Test Strategy",
     stopLoss: -0.03, // Stop out on 3% loss from entry price.
+    limitOrder: 0.05,
     buySignal: indicators => {
 
         if (indicators.upTrendCounter == 25033) {
@@ -17,59 +20,107 @@ module.exports = {
             && indicators.upTrendCounter < 10
             && indicators.rsi < 80
         ) {
-            buySignal += indicators.upTrendCounter * 10;
+            return {
+                reason: ["upTrendCounter: " + indicators.upTrendCounter, "rsi: " + Math.round(indicators.rsi)].join("\t"),
+                signal: indicators.upTrendCounter * 10
+            }
         } else if (
-            indicators.rsi < 20
-           && indicators.downTrendCounter > 10
+            indicators.rsi < 30
+           && indicators.downTrendCounter > 2
         ) {
-            buySignal += indicators.rsi;
+            return {
+                reason: ["rsi: " + Math.round(indicators.rsi)].join("/t"),
+                signal: 30 - indicators.rsi
+            }
+        } 
+
+        if (indicators.sma13 > indicators.sma48) {
+            return {
+                reason: ["sma13",Math.round(indicators.sma13), ">","sma48", Math.round(indicators.sma48)].join("\t"),
+                signal: 30
+            }
         }
 
-        return buySignal;
+        return {
+            reason: "hmmm",
+            signal: buySignal
+        }
     },
 
     sellSignal: indicators => {
         var sellSignal = 0;
-        if (indicators.rsi > 90) {
-            sellSignal += 100;
+        // if volume is 2 times the previous sma volume
+        if (indicators.smaVolume * 2 < indicators.volume) {
+            return {
+                reason: "highvolume: " + indicators.hv + " " + indicators.volume,
+                signal: 10000
+            }
         }
-        if (indicators.downTrendCounter >= 2) {
-            sellSignal += 50;
+
+        if (indicators.sma13 < indicators.sma48) {
+            return {
+                reason: ["sma13",Math.round(indicators.sma13), "<","sma48", Math.round(indicators.sma48)].join("\t"),
+                signal: 50
+            }
         }
-        return sellSignal;
+
+        if (indicators.direction < 0 && indicators.rsi > 80) {
+            return {
+                reason: "rsi: " + indicators.rsi,
+                signal: 100
+            }
+        }
+        if (indicators.downTrendCounter >= 3) {
+            return {
+                reason: "downTrendCounter: " + indicators.downTrendCounter,
+                signal: 50
+            }
+        }
+        return {
+            reason: "unsure",
+            signal: sellSignal
+        }
     },
 
     addIndicators: function(inputSeries) {
         // Add whatever indicators and signals you want to your data.
-       
         const direction = inputSeries.deflate(row => row.close).direction(3);
-        inputSeries = inputSeries.withSeries("direction", direction)   // Integrate moving average into data, indexed on date.
-        
         const longTermDirection = inputSeries.deflate(row => row.close).direction(20);
-        inputSeries = inputSeries.withSeries("longTermDirection", longTermDirection)   // Integrate moving average into data, indexed on date.
-
         const upTrendCounter = inputSeries.deflate(row => row.close).trends().counter(trend => trend > 0);
-        inputSeries = inputSeries.withSeries("upTrendCounter", upTrendCounter)   // Integrate moving average into data, indexed on date.
-    
         const downTrendCounter = inputSeries.deflate(row => row.close).trends().counter(trend => trend < 0);
-        inputSeries = inputSeries.withSeries("downTrendCounter", downTrendCounter)   // Integrate moving average into data, indexed on date.
-        
         const longSma = inputSeries.deflate(bar => bar.close).sma(30);                           // 30 day moving average.
-        inputSeries = inputSeries.withSeries("longSma", longSma) 
+        const shortSma = inputSeries.deflate(bar => bar.close).sma(7);                           // 7 day moving average.        
+        const rsi = inputSeries.deflate(row => row.close).rsi(14);
+        const smaVolume = inputSeries.deflate(row => row.volume).sma(5);
+        const sma13 = inputSeries.deflate(bar => bar.close).sma(13);                           // 30 day moving average.
+        const sma48 = inputSeries.deflate(bar => bar.close).sma(48);                           // 30 day moving average.
 
-        const shortSma = inputSeries.deflate(bar => bar.close).sma(7);                           // 30 day moving average.
-        inputSeries = inputSeries.withSeries("shortSma", shortSma) 
-        
+
+
+        inputSeries = inputSeries.withSeries({
+            direction: direction,
+            longTermDirection: longTermDirection,
+            upTrendCounter: upTrendCounter,
+            downTrendCounter: downTrendCounter,
+            longSma: longSma,
+            shortSma: shortSma,
+            sma13: sma13,
+            sma48: sma48,
+            rsi: rsi,
+            smaVolume: smaVolume,
+        }); 
+
         try {
             const longEma = inputSeries.deflate(bar => bar.close).ema(30);                           // 30 day moving average.
-            inputSeries = inputSeries.withSeries("longEma", longEma)
+            const shortEma = inputSeries.deflate(bar => bar.close).ema(7);                           // 7 day moving average.
 
-            const shortEma = inputSeries.deflate(bar => bar.close).ema(7);                           // 30 day moving average.
-            inputSeries = inputSeries.withSeries("shortEma", shortEma)
+            inputSeries = inputSeries.withSeries({
+                longEma: longEma,
+                shortEma: shortEma
+            });
         } catch (e) {}
-        const rsi = inputSeries.deflate(row => row.close).rsi(14);
-        inputSeries = inputSeries.withSeries("rsi", rsi)
+        
 
         return inputSeries;
-    },
+    }
 };

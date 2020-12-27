@@ -1,8 +1,8 @@
 
 class Trade {
-
+    ticker = ""
+    entryTime = 0
     data = {
-        ticker: "",
         direction: "long",
         quantity: 0,
         currentPrice: 0,
@@ -11,11 +11,7 @@ class Trade {
             price: 0,
             info: {}
         },
-        exit: {
-            time: 0,
-            price: 0,
-            info: {}
-        },
+        exit: false,
         profit: 0,
         profitPct: 0,
         growth: 0,
@@ -30,30 +26,31 @@ class Trade {
     };
 
     calculate() {
-        var startingValue = this.data.quantity * this.data.entry.price;
-        var currentValue = this.data.quantity * this.data.currentPrice;
+        var startingValue = this.quantity * this.data.entry.price;
+        var currentValue = this.quantity * this.data.currentPrice;
         this.data.profit = currentValue - startingValue;
         this.data.profitPct = this.data.profit / startingValue;
         this.data.growth = this.data.profitPct;
         return this;
     };
 
-    currentValue(price) {
-        if (price !== undefined) {
-            this.data.currentPrice = price;
+    currentValue(data) {
+        if (data !== undefined) {
+            this.data.currentPrice = data.open;
         }
         this.calculate();
-        return this.data.quantity * this.data.currentPrice;
+        return this.quantity * this.data.currentPrice;
     };
 
-    enterPosition(time, ticker, quantity, price, info) {
-        this.data.ticker = ticker;
-        this.data.quntity = quantity;
+    constructor(time, ticker, quantity, price, info) {
+        this.ticker = ticker;
+        this.quantity = quantity;
         this.data.entry = {
             time: time,
             price: price,
             info: info
         };
+        this.entryTime = time;
         this.data.currentPrice = price;
         return this;
     };
@@ -71,3 +68,5 @@ class Trade {
     }
 
 }
+
+module.exports = Trade
