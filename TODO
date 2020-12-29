@@ -1,5 +1,11 @@
+backtest with minute by minute.
+
+store logs and trades in a file
+
+play around with extrema & momentum
+
+
+
+- implement kraken api
+
 - plot trades on the graph
-
-- find a crypto trading api
-
-- holdall shouldn't have any sell signals?

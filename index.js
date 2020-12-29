@@ -17,6 +17,7 @@ try {
     strat = require('./strategies/'+stratName);
 } catch (e) {
     console.log(chalk.red("ERROR: Cannot find strategy: ./strategies/"+stratName));
+    console.log(e);
     process.exit();
 }
 const strategy = strat.strategy;
@@ -33,6 +34,7 @@ const fs = require('fs');
 const moment = require('moment');
 const terminalImage = require('terminal-image');
 const trader = require('./modules/trader');
+const tickers = require('./modules/tickers');
 
 var firstTrade = moment();
 var lastTrade = moment("1980-01-01");
@@ -40,7 +42,7 @@ var lastTrade = moment("1980-01-01");
 
 const startingCapital = settings.startingCapital;
 
-var stocks = settings.stocks;
+
 
 var totalProfit = 0;
 var marketProfit = 0;
@@ -76,10 +78,12 @@ async function main() {
 
     log("Strategy: " + chalk.yellow(settings.strategy))
     await trader.addStrategyByName(settings.strategy);
+    var stocks = await tickers.fetch(settings.stocks)
     log("Adding " + stocks.length + " stocks")
     await trader.addStocks(stocks);
     log("About to commence backtesting")
-    await trader.backtest();
+    await trader.backtest(true);
+
 
     return trader;
 }
@@ -87,6 +91,16 @@ async function main() {
 
 main()
     .then(results => {
+        console.log(trader.portfolio.profits);
+        for (var i in trader.portfolio.profits) {
+            if (trader.portfolio.profits[i] < 0) {
+                console.log(chalk.red(i + "\t " + trader.portfolio.profits[i]))
+            } else if (trader.portfolio.profits[i] > 0) {
+                console.log(chalk.green(i + "\t " + trader.portfolio.profits[i]))
+            } else {
+                console.log(chalk.yellow(i + "\t " + trader.portfolio.profits[i]))
+            }
+        }
 
         trader.portfolio.calculate();
         console.log("Portfolio value: ",trader.portfolio.portfolioValue);   
@@ -94,7 +108,9 @@ main()
         var profit = trader.portfolio.getProfit();
 
         console.log(chalk.colorize(profit,0,"Total Profit: $"+profit));   
+        console.log("ROI: "+ (profit / startingCapital).toFixed(3));   
 
+        console.log(trader.portfolio.holdings);
 
     })
     .catch(err => {

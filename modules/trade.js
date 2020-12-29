@@ -36,7 +36,7 @@ class Trade {
 
     currentValue(data) {
         if (data !== undefined) {
-            this.data.currentPrice = data.open;
+            this.data.currentPrice = data.close;
         }
         this.calculate();
         return this.quantity * this.data.currentPrice;
@@ -45,6 +45,7 @@ class Trade {
     constructor(time, ticker, quantity, price, info) {
         this.ticker = ticker;
         this.quantity = quantity;
+        this.boughtTotal = price * quantity;
         this.data.entry = {
             time: time,
             price: price,

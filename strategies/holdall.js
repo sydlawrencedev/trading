@@ -3,10 +3,16 @@ module.exports = {
     addIndicators: inputSeries => {
         return inputSeries;
     },
-    buySignal: args => {
-        return 1000000;
+    buySignal: indicators => {
+        return {
+            signal: 50,
+            reason: "buy buy buy"
+        }
     },
-    sellSignal: args => {
-        return -1000000;
+    sellSignal: indicators => {
+        return {
+            signal: -50,
+            reason: "HODL"
+        }
     }
 };

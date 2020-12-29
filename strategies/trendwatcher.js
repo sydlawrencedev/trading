@@ -1,10 +1,8 @@
 module.exports = {
-    addIndicators: function(inputSeries) {
-        // Add whatever indicators and signals you want to your data.
-        const daysFalling = inputSeries.deflate(row => row.close).daysFalling();
-        inputSeries = inputSeries.withSeries("daysFalling", daysFalling);
-
-        
+    name: "Trend Watcher",
+    stopLoss: -0.0, // Stop out on 3% loss from entry price.
+    limitOrder: 0.05,
+    addIndicators: inputSeries => {
         const direction = inputSeries
             .deflate(row => row.close)
             .direction(3);
@@ -21,28 +19,28 @@ module.exports = {
         inputSeries = inputSeries.withSeries("downTrendCounter", downTrendCounter)   // Integrate moving average into data, indexed on date.
         return inputSeries; 
     },
-    strategy: {
-        entryRule: (enterPosition, args) => {
-            // if uptrend > 3 buy
-            if (args.bar.direction > 0 && args.bar.upTrendCounter > 3) { // Buy when price is below average.
-                enterPosition();
+    buySignal: indicators => {
+        if (indicators.upTrendCounter > 3) {
+            return {
+                signal: 10 * indicators.upTrendCounter,
+                reason: "upTrendCounter: " + indicators.upTrendCounter
             }
-           
-        },
-
-        exitRule: (exitPosition, args) => {
-            // if profit > 3% sell
-            if (args.position.profitPct > 3) {
-                exitPosition();
+        }
+        return {
+            signal: 0,
+            reason: ""
+        }
+    },
+    sellSignal: indicators => {
+        if (indicators.downTrendCounter >= 3) {
+            return {
+                signal: 10 * indicators.downTrendCounter,
+                reason: "downTrendCounter: " + indicators.downTrendCounter
             }
-            // if downtrend is >= 2 sell
-            else if (args.bar.downTrendCounter >= 2) {
-                exitPosition();
-            }
-        },
-
-        stopLoss: args => { // Intrabar stop loss.
-            return args.entryPrice * (2/100); // Stop out on 2% loss from entry price.
+        }
+        return {
+            signal: 0,
+            reason: ""
         }
     }
 };

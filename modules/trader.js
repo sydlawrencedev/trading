@@ -29,12 +29,12 @@ trader.addStocks = async function(stocks) {
     return this;
 }
 
-trader.backtest = async function() {
-    return await this.determineTrades();
+trader.backtest = async function(display) {
+    return await this.determineTrades(display);
 }
 
-trader.determineTrades = async function() {
-    log("determining trades")
+trader.determineTrades = async function(display) {
+    log("Determining possible trades")
     var combinedStockData = {};
     var combinedTrades = [];
     for (i in this.stocks) {
@@ -44,14 +44,11 @@ trader.determineTrades = async function() {
                 sellOut: stockData => stockData.select(row => (row.sellSignal > settings.thresholds.sell)),
                 buyIn: stockData => stockData.select(row => row.buySignal > settings.thresholds.buy)
             });
-        
-
+    
             const buyInMoment = stockData.rollingWindow(2) // Group into lots of 7 (for 7 days).
                 .select(window => {
-                    var row = window.last();
-                    var previous = window.first();
                     return [ window.last().time, 
-                        (row.isHolding && !previous.isHolding) ? true : undefined
+                        (window.last().isHolding && !window.first().isHolding) ? true : undefined
                     ]; 
                 })
                 .withIndex(pair => pair[0]) // Promote index.
@@ -59,10 +56,8 @@ trader.determineTrades = async function() {
 
             const sellOutMoment = stockData.window(2) // Group into lots of 7 (for 7 days).
                 .select(window => {
-                    var row = window.last();
-                    var previous = window.first();
                     return [ window.last().time, 
-                        !row.isHolding && previous.isHolding ? true : undefined
+                        !window.last().isHolding && window.first().isHolding ? true : undefined
                     ]; 
                 })
                 .withIndex(pair => pair[0]) // Promote index.
@@ -75,21 +70,47 @@ trader.determineTrades = async function() {
                 buyInAmount: stockData => stockData.select(row => (row.buyInMoment) ? trader.getBuyInValue(row.buySignal) : 0),
             });
 
+            
+
             var holdings = [];
+            var boughtInPrices = [];
             var previousRow;
             var previousHolding;
+            var previousBuyInPrice = undefined;
             for (const row of stockData) {
                 var isNowHolding = false;
+                var stopLoss = false;
+                var limitOrder = false;
                 if (previousHolding == true) {
                     isNowHolding = true;
                 }
                 if (row.buyIn) {
                     isNowHolding = true;
+                    if (previousBuyInPrice === undefined) {
+                        previousBuyInPrice = row.close;
+                    }
                 }
+
                 if (previousRow && previousRow.sellOut && !row.buyIn) {
                     isNowHolding = false;
+                    previousBuyInPrice = undefined;
                 }
-                holdings.push({time: row.time, isHolding: isNowHolding});
+                var strategy = this.strategies[0];
+
+                if (isNowHolding && strategy.stopLoss !== undefined) {
+                    if (((row.open - previousBuyInPrice) / previousBuyInPrice) <= strategy.stopLoss) {
+                        stopLoss = Math.round((row.open - previousBuyInPrice) / previousBuyInPrice * 1000)/10 + "%";
+                    }
+                }
+
+                if (isNowHolding && strategy.limitOrder !== undefined) {
+                    if (((row.open - previousBuyInPrice) / previousBuyInPrice) >= strategy.limitOrder) {
+                        limitOrder = Math.round((row.open - previousBuyInPrice) / previousBuyInPrice * 1000)/10 + "%";
+                    }
+                }
+
+
+                holdings.push({time: row.time, limitOrder:limitOrder, stopLoss: stopLoss, isHolding: isNowHolding, previousBuyInPrice: previousBuyInPrice});
                 previousRow = row;
                 previousHolding = isNowHolding;
                 // Do something with row.
@@ -99,15 +120,20 @@ trader.determineTrades = async function() {
             }).setIndex("time");
 
             stockData = stockData.withSeries({
-                boughtShares: stockData => stockData.select(row => (row.buyInMoment) ? (supportPartialShares) ? row.buyInAmount / row.open : Math.floor(row.buyInAmount / row.open) : 0),
+                boughtShares: stockData => stockData.select(row => (row.buyInMoment) ? (supportPartialShares) ? row.buyInAmount / row.close : Math.floor(row.buyInAmount / row.close) : 0),
+                previousBuyInPrice: holdings.deflate(row => row.previousBuyInPrice),
+                stopLoss: holdings.deflate(row => row.stopLoss),
+                limitOrder: holdings.deflate(row => row.limitOrder),
                 isHolding: holdings.deflate(row => row.isHolding)
             });
 
+            // manipulate sellOut, if it has stop Loss
 
-            // console.log(stockData.subset(["ema","close", "downTrendCounter", "buySignal", "sellSignal"]).toString())
+
+            // console.log(stockData.subset(["previousBuyInPrice", "isHolding", "close", "stopLoss"]).toString())
 
 
-            var tradesData = stockData.where(row => (row.buyIn || (row.isHolding && row.sellOut)));
+            var tradesData = stockData.where(row => (row.buyIn || (row.isHolding && row.sellOut) || (row.isHolding && row.stopLoss) || (row.isHolding && row.limitOrder)));
             
             for (const trade of tradesData) {
                 combinedTrades.push(trade);
@@ -126,22 +152,29 @@ trader.determineTrades = async function() {
         return a.time > b.time ? 1 : -1
     });
     
-
-    log(["DATE","", "BUY ","STOCK","QTY","PRICE", "TOTAL", "SIGNAL", "REASON"].join("\t"));
-    log(["DATE","", "SELL ","STOCK","PROFIT","PRICE", "TOTAL", "SIGNAL", "REASON"].join("\t"));
-
-
-    
+    // loop though each trade
+    portfolio.display = display;
+    if (display) {
+        log(["DATE","", "BUY ","STOCK","QTY","PRICE   ", "TOTAL", "SIGNAL", "REASON"].join("\t"));
+        log(["DATE","", "SELL ","STOCK","PROFIT","PRICE   ", "TOTAL", "SIGNAL", "REASON"].join("\t"));    
+    }
     for (const trade of combinedTrades) {
-        if (trade.sellOut) {
+        if (trade.sellOut || trade.stopLoss || trade.limitOrder) {
+            var reason = trade.sellReason;
+            if (trade.stopLoss) {
+                reason = "Stop loss: " + trade.stopLoss;
+            }
+            if (trade.limitOrder) {
+                reason = "Limit order: " + trade.limitOrder;
+            }
             portfolio.closeAll(trade.ticker, {
                 time: trade.time,
                 price: trade.open,
                 info: trade,
-                reason: trade.sellReason
+                reason: reason
             });
         } else if (trade.buyIn) {
-            portfolio.openTrade(trade.ticker, trade.time, trade.open, trade);
+            portfolio.openTrade(trade.ticker, trade.time, trade.close, trade);
         }
     } 
 
@@ -149,23 +182,29 @@ trader.determineTrades = async function() {
         
         if (portfolio.holdings[i] !== undefined) {
             for (var j = 0; j < portfolio.holdings[i].length; j++) {
-                portfolio.holdings[i][j].currentValue(combinedStockData[i].last())
+                if (portfolio.holdings[i][j] !== undefined) {
+                    portfolio.holdings[i][j].currentValue(combinedStockData[i].last())
+                }
             }
-            portfolio.closeAll(i, {
-                time: (new Date()),
-                price: combinedStockData[i].last().close,
-                info: {},
-                reason: "Finalizing"
-            });
+            if (display === true) {
+                portfolio.closeAll(i, {
+                    time: combinedStockData[i].last().time,
+                    price: combinedStockData[i].last().close,
+                    info: {},
+                    reason: "Finalizing",
+                    force: true
+                });
+            }
         }
     }
-
-    return this;
+    return combinedTrades;
 }
 
-trader.addStock = async function(ticker) {
+trader.addStock = async function(ticker, data) {
     log("Getting historical data for: " + ticker)
-    var data = await MarketData.getHistoricSingle(ticker);
+    if (data == undefined) {
+        data = await MarketData.getHistoricSingle(ticker);
+    }
     log("Got historical data for: " + ticker)
 
     for (var i = 0; i < this.strategies.length; i++) {
@@ -208,6 +247,7 @@ trader.addStrategyByName = function(strategyName) {
     var strategy = require("../strategies/"+strategyName);
     strategy.name = strategyName;
     this.strategies.push(strategy);
+    this.portfolio.strategies.push(strategy);
     return this;
 }
 
