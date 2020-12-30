@@ -1,8 +1,15 @@
 var keys = require("./.keys");
 
-var stocks = "watch";
+
+var verbose = false;
+if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
+    verbose = true;
+    console.log("Running in verbose mode");
+}
+
+// var stocks = "watch";
 // stocks = "june2020undervalued";
-// stocks = "syd";
+stocks = "watch";
 // stocks = "bear";
 settings = {   
     stockFile: stocks,
@@ -15,11 +22,14 @@ settings = {
     alpaca: keys.alpaca,
     supportPartialShares: false,
     startingCapital: 100000,
-    verbose: false,
+    verbose: verbose,
     tradingTimeout: 1 * 60 * 1000,
+    timeframe: "daily", // daily, minute
+    interval: false, // 1min, 5min, 15min, 30min, 60min, false if daily
     timeWindow: {
-        start: "2020-01-01",
-        end: "2020-08-01"
+        start: "2020-10-01 00:00:00",
+        end: "2020-12-29 00:00:00",
+        // start: false // use all available data
     },
     thresholds: {
         buy: 0,

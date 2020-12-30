@@ -1,4 +1,6 @@
 const settings = require('./settings');
+const logger = require('./modules/logger');
+
 const chalk = require('chalk');
 
 chalk.colorize = function(val, base, str) {
@@ -52,12 +54,6 @@ var baseAlgoProfit = 0;
 
 var verbose = settings.verbose;
 
-log = function(text) {
-    if (verbose) {
-        console.log(text);
-    }
-}
-
 function processArgs(args) {
     var options = {};
     args.forEach(element => {
@@ -76,46 +72,41 @@ async function main() {
     var options = processArgs(myArgs);;
     var allResults = [];
 
-    log("Strategy: " + chalk.yellow(settings.strategy))
+    logger.setup("Strategy: " + chalk.yellow(settings.strategy))
     await trader.addStrategyByName(settings.strategy);
     var stocks = await tickers.fetch(settings.stocks)
-    log("Adding " + stocks.length + " stocks")
+    logger.setup("Adding " + stocks.length + " stocks")
     await trader.addStocks(stocks);
-    log("About to commence backtesting")
-    await trader.backtest(true);
+    logger.setup("About to commence backtesting")
+    await trader.backtest(true).catch(e => {
+        logger.error(["BACKTEST ERROR", e.message])
+        console.log(e)
+    });
 
 
     return trader;
 }
 
-
 main()
     .then(results => {
-        console.log(trader.portfolio.profits);
         for (var i in trader.portfolio.profits) {
-            if (trader.portfolio.profits[i] < 0) {
-                console.log(chalk.red(i + "\t " + trader.portfolio.profits[i]))
-            } else if (trader.portfolio.profits[i] > 0) {
-                console.log(chalk.green(i + "\t " + trader.portfolio.profits[i]))
-            } else {
-                console.log(chalk.yellow(i + "\t " + trader.portfolio.profits[i]))
-            }
+            var profit = trader.portfolio.profits[i];
+            logger.status([
+                i,chalk.colorize(profit,0,"Profit: " + Math.round(profit))
+            ])
         }
 
-        trader.portfolio.calculate();
-        console.log("Portfolio value: ",trader.portfolio.portfolioValue);   
+        trader.portfolio.logStatus();
 
-        var profit = trader.portfolio.getProfit();
-
-        console.log(chalk.colorize(profit,0,"Total Profit: $"+profit));   
-        console.log("ROI: "+ (profit / startingCapital).toFixed(3));   
-
-        console.log(trader.portfolio.holdings);
 
     })
-    .catch(err => {
-        console.error(chalk.red("An error occurred."));
-        console.error(err && err.stack || err);
+    .catch(e => {
+        console.log(chalk.red([
+            moment().format("DD/MM/YYYY HH:mm:ss"),
+            "ERROR",
+            e.message,
+        ].join("\t")));
+        console.log(e.stack);        
     });
 
 

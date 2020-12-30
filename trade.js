@@ -1,5 +1,6 @@
 var chalk = require("chalk");
 
+const marketdata = require('./modules/marketdata');
 
 const readline = require('readline');
 const moment = require('moment');
@@ -83,6 +84,10 @@ gotBars = function(bars, moreToTry) {
                     .renameSeries({ closePrice: "close" });
             await trader.addStock(stock, df);
                 
+            // save to file
+            df.reverse().renameSeries({time: "timestamp"}).asCSV()                            // Write out data file in CSV (or other) format.
+                .writeFileSync("data/"+marketdata.filename(stock,"minute","1min")+"-live-"+moment().format("YYYY-MM-DD-HH")+".csv");
+
         }
 
         var trades = [];
@@ -93,6 +98,12 @@ gotBars = function(bars, moreToTry) {
             console.log(e);
             trades = [];
         }
+
+
+        statusUpdate();
+
+
+        trader.portfolio.holdings = {};
         // console.log(trades);
 
         var attemptedTrades = {};
@@ -139,7 +150,7 @@ gotBars = function(bars, moreToTry) {
                         attemptedTrades[trade.ticker] = true;
                         var sellResponse = await sellStock(trade.ticker, position.qty);
 
-                        console.log([
+                        console.log(chalk.green([
                             moment().format("DD/MM/YYYY HH:mm:ss"),
                             "SELL",
                             trade.ticker,
@@ -151,7 +162,7 @@ gotBars = function(bars, moreToTry) {
                             Math.round(position.current_price)+"", Math.round(position.market_value)+"  ",
                             trade.sellSignal,
                             trade.sellReason
-                        ].join("\t"));
+                        ].join("\t")));
                     }
                 } catch (e) {
                     if (e.error !== undefined && e.error.code == 40410000) {
@@ -160,26 +171,43 @@ gotBars = function(bars, moreToTry) {
                         // console.log("position doesn't exist with "+stock);
                         console.log(chalk.red([
                             moment().format("DD/MM/YYYY HH:mm:ss"),
-                            "ERROR",
+                            "SELL",
                             trade.ticker,
+                            "ERROR",
                             e.error.code,
-                            e.error.message
+                            e.error.message,
+                            trade.sellSignal,
+                            trade.sellReason
                         ].join("\t")));
                     }
                 }
             }
+
             else if (trade.buySignal > trade.sellSignal) {
                 // console.log(trade);
-                requiresActivty = true;
-                var account = await alpaca.getAccount();
-                var positions = await alpaca.getPositions();
-                portfolio.updateFromAlpaca(account, positions);
-                var amountToSpend = portfolio.getAmountToSpend(trade);
-                var quantity = Math.floor(amountToSpend / trade.close);
-                amountToSpend = quantity * trade.close;
-                if (quantity > 0) {
-                    console.log([moment().format("DD/MM/YYYY HH:mm:ss"), "BUY ",trade.ticker,Math.round(quantity),Math.round(trade.close)+"", Math.round(amountToSpend)+"   ", trade.buySignal, trade.buyReason].join("\t"));
-                    var purchase = await buyStock(trade.ticker, quantity, trade.close)
+                try {
+                    requiresActivty = true;
+                    var account = await alpaca.getAccount();
+                    var positions = await alpaca.getPositions();
+                    portfolio.updateFromAlpaca(account, positions);
+                    var amountToSpend = portfolio.getAmountToSpend(trade);
+                    var quantity = Math.floor(amountToSpend / trade.close);
+                    amountToSpend = quantity * trade.close;
+                    if (quantity > 0) {
+                        console.log(chalk.green([moment().format("DD/MM/YYYY HH:mm:ss"), "BUY ",trade.ticker,Math.round(quantity),Math.round(trade.close)+"", Math.round(amountToSpend)+"   ", trade.buySignal, trade.buyReason].join("\t")));
+                        var purchase = await buyStock(trade.ticker, quantity, trade.close)
+                    }
+                } catch (e) {
+                    console.log(chalk.red([
+                        moment().format("DD/MM/YYYY HH:mm:ss"),
+                        "BUY",
+                        trade.ticker,
+                        "ERROR",
+                        e.message,
+                        trade.buySignal,
+                        trade.buyReason
+                        // e.error,
+                    ].join("\t")))
                 }
                 
             }
@@ -208,7 +236,10 @@ async function main(repeating) {
         await trader.addStrategyByName(settings.strategy);
     }
     stocks = await tickers.fetch(settings.stockFile)
+
+    statusUpdate();
     log("Adding " + stocks.length + " stocks")
+    
     alpaca.getAccount().then((account, err) => {
         if (!account) {
             console.log(chalk.red("eurgh"));
@@ -304,16 +335,30 @@ statusUpdate = function() {
 
         alpaca.getPositions().then(positions => {
             portfolio.updateFromAlpaca(account, positions);
-
-            var profit = trader.portfolio.getProfit();
-
-            console.log([moment().format("DD/MM/YYYY HH:mm:ss"), "STATUS",chalk.colorize(profit,0,"ROI: "+ (profit / startingCash).toFixed(5)), "Cash: $"+portfolio.cash.toFixed(0), "Portfolio: $"+Math.round(portfolio.portfolioValue), chalk.colorize(profit,0,"Total Profit: $"+profit.toFixed(0))].join("\t"))
-            console.log([moment().format("DD/MM/YYYY HH:mm:ss"), "STATUS","Active positions: "+positions.length].join("\t"))
-
+                var profit = trader.portfolio.getProfit();
+                var hodlAverage = "N/A";
+                var roi = profit / startingCash;
+                try {
+                    var hodl = trader.getHODL("2020-12-29 09:00:00");
+                    console.log(hodl);
+                    function average(nums) {
+                        return nums.reduce((a, b) => (a + b)) / nums.length;
+                    }
+                    if (Object.values(hodl).length > 0) {
+                        hodlAverage = average(Object.values(hodl)).toFixed(5);
+                        hodlAverage = chalk.colorize(roi, hodlAverage, hodlAverage);
+                    }
+                } catch (e) {
+                    console.log(e);
+                    process.exit();
+                }
+                
+                console.log([moment().format("DD/MM/YYYY HH:mm:ss"), "STATUS",chalk.colorize(profit,0,"ROI: "+ roi.toFixed(5)), "Cash: $"+portfolio.cash.toFixed(0), "Portfolio: $"+Math.round(portfolio.portfolioValue), chalk.colorize(profit,0,"Profit: $"+profit.toFixed(0)), "HODL: "+hodlAverage].join("\t"))
+                console.log([moment().format("DD/MM/YYYY HH:mm:ss"), "STATUS","Active positions: "+positions.length].join("\t"))
+            
         })
     });
 }
-statusUpdate();
 main().catch(e => {
     console.log(chalk.red([
         moment().format("DD/MM/YYYY HH:mm:ss"),
@@ -326,7 +371,7 @@ main().catch(e => {
 
 setInterval(function() {
     statusUpdate();
-}, 5 * 60 * 10000)
+}, 5 * 60 * 1000)
 
 
 setInterval(function() {
