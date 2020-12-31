@@ -19,7 +19,7 @@ var  MarketData = {
     },
 
     fetchHistoricSingle: async function(stockTicker, timeframe = "daily", interval = false) {
-        var filename = "data/"+this.filename(stockTicker,timeframe,interval)+".csv";
+        var filename = process.mainModule.path+"/data/"+this.filename(stockTicker,timeframe,interval)+".csv";
         
         var dataFunction = "TIME_SERIES_DAILY";
         switch (timeframe) {
@@ -40,7 +40,7 @@ var  MarketData = {
             responseType: "stream"
         });
         if (response.status == 200) {
-            logger.setup("Downloaded stock data for " + stockTicker);
+            logger.success([stockTicker,"Downloaded historical stock data"]);
             try {
                 await fs.unlinkSync(filename);
             } catch (e) {
@@ -69,7 +69,7 @@ var  MarketData = {
     },
     
     getHistoricSingle: async function(stockTicker, timeframe = "daily", interval = false) {
-        var filename = "data/"+this.filename(stockTicker,timeframe,interval)+".csv";
+        var filename = process.mainModule.path+"/data/"+this.filename(stockTicker,timeframe,interval)+".csv";
         var df;
         try {
             var dateFormat = "YYYY-MM-DD";

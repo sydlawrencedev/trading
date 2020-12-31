@@ -72,7 +72,15 @@ async function main() {
     var options = processArgs(myArgs);;
     var allResults = [];
 
-    logger.setup("Strategy: " + chalk.yellow(settings.strategy))
+    logger.log([
+        "STATUS",
+        "Initialising backtesting",
+        "Strategy: "+chalk.yellow(settings.strategy),
+        "Stocklist: "+chalk.yellow(settings.stockFile),
+        "Starting capital: $"+settings.startingCapital         
+    ])
+
+
     await trader.addStrategyByName(settings.strategy);
     var stocks = await tickers.fetch(settings.stocks)
     logger.setup("Adding " + stocks.length + " stocks")
@@ -89,23 +97,15 @@ async function main() {
 
 main()
     .then(results => {
-        for (var i in trader.portfolio.profits) {
-            var profit = trader.portfolio.profits[i];
-            logger.status([
-                i,chalk.colorize(profit,0,"Profit: " + Math.round(profit))
-            ])
-        }
+        
+        trader.portfolio.logProfits();
 
+        logger.log(["Finished backtesting", settings.timeWindow.start, "=>",settings.timeWindow.end]);
         trader.portfolio.logStatus();
-
 
     })
     .catch(e => {
-        console.log(chalk.red([
-            moment().format("DD/MM/YYYY HH:mm:ss"),
-            "ERROR",
-            e.message,
-        ].join("\t")));
+        logger.error(e.message);
         console.log(e.stack);        
     });
 

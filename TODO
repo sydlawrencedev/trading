@@ -1,10 +1,17 @@
-backtest with minute by minute.
-
+make hodl work when live
+only buy more if +5% > -2%
 store logs and trades in a file
 
-play around with extrema & momentum
+make live trading work with webhooks
+
+make hodl work when live
 
 
+get live
+
+
+
+backtest with minute by minute.
 
 - implement kraken api
 

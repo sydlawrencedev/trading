@@ -25,11 +25,11 @@ trader.addStocks = async function(stocks) {
     return this;
 }
 
-trader.backtest = async function(display) {
-    return await this.determineTrades(display);
+trader.backtest = async function(andThenPerformTrades = false) {
+    return await this.determineTrades(andThenPerformTrades);
 }
 
-trader.determineTrades = async function(display) {
+trader.determineTrades = async function(andThenPerformTrades = false) {
     logger.setup("Determining possible trades")
     var combinedStockData = {};
     var combinedTrades = [];
@@ -106,7 +106,6 @@ trader.determineTrades = async function(display) {
                     }
                 }
 
-
                 holdings.push({time: row.time, limitOrder:limitOrder, stopLoss: stopLoss, isHolding: isNowHolding, previousBuyInPrice: previousBuyInPrice});
                 previousRow = row;
                 previousHolding = isNowHolding;
@@ -124,25 +123,16 @@ trader.determineTrades = async function(display) {
                 isHolding: holdings.deflate(row => row.isHolding)
             });
 
-            // manipulate sellOut, if it has stop Loss
-
-
-            // console.log(stockData.subset(["momentum", "rsi", "extrema", "direction", "longTermDirection","close"]).toString())
-
-
             var tradesData = stockData.where(row => (row.buyIn || (row.isHolding && row.sellOut) || (row.isHolding && row.stopLoss) || (row.isHolding && row.limitOrder)));
             
             for (const trade of tradesData) {
                 combinedTrades.push(trade);
             }
 
-            logger.status([i,tradesData.count() + " possible trades"]);
+            logger.setup([i,tradesData.count() + " possible trades"]);
             
             combinedStockData[i] = stockData;
         } catch (e) {
-            // console.log(chalk.red("determine trades error"));
-            // console.log(e); 
-
             logger.error([
                 "ERROR",
                 i,
@@ -153,7 +143,7 @@ trader.determineTrades = async function(display) {
     }    
 
     if (combinedTrades.length === 0) {
-        logger.status("no possible trades?");
+        logger.setup("no possible trades?");
     }
 
     // tradesData = tradesData.subset(["time", "buyIn", "isHolding", "sellOut", "open", "close"]);
@@ -162,13 +152,16 @@ trader.determineTrades = async function(display) {
             return (a.buySignal > b.buySignal) ? 1 : -1
         return a.time > b.time ? 1 : -1
     });
-    
-    // loop though each trade
-    portfolio.display = display;
-    if (display) {
-        logger.log(["BUY  ","STOCK","QTY","PRICE   ", "TOTAL", "SIGNAL", "REASON"].join("\t"));
-        logger.log(["SELL ","STOCK","PROFIT","PRICE   ", "TOTAL", "SIGNAL", "REASON"].join("\t"));    
+    if (andThenPerformTrades) {
+        this.performTrades(combinedStockData, combinedTrades);
     }
+    return combinedTrades;
+}
+
+trader.performTrades = function(combinedStockData, combinedTrades) {
+
+    logger.status("Performing trades");
+    
     for (const trade of combinedTrades) {
         if (trade.sellOut || trade.stopLoss || trade.limitOrder) {
             var reason = trade.sellReason;
@@ -197,21 +190,18 @@ trader.determineTrades = async function(display) {
                     portfolio.holdings[i][j].currentValue(combinedStockData[i].last())
                 }
             }
-            if (display === true) {
-                portfolio.closeAll(i, {
-                    time: combinedStockData[i].last().time,
-                    price: combinedStockData[i].last().close,
-                    info: {},
-                    reason: "Finalizing",
-                    force: true
-                });
-            }
+            portfolio.closeAll(i, {
+                time: combinedStockData[i].last().time,
+                price: combinedStockData[i].last().close,
+                info: {},
+                reason: "Finalizing",
+                force: true
+            });
         }
     }
-    return combinedTrades;
 }
 
-trader.portfolio.getHODL = trader.getHODL = function(startTime) {
+trader.portfolio.getHODL = trader.getHODL = function(startTime = settings.timeWindow.start) {
     var hodl = {};
     for (var i in trader.stocks) {
         var data = trader.stocks[i];
@@ -220,8 +210,7 @@ trader.portfolio.getHODL = trader.getHODL = function(startTime) {
             var start = data.where(row => row.time >= moment(startTime));
             if (start.count() > 0) {
                 start = start.first();
-                start = start.close
-                hodl[i] = (close - start ) / start;
+                hodl[i] = (close - start.close ) / start.close;
             }
         }
     }
@@ -231,17 +220,17 @@ trader.portfolio.getHODL = trader.getHODL = function(startTime) {
 trader.portfolio.getHODL = trader.getHODL;
 
 trader.addStock = async function(ticker, data) {
-    logger.setup("Getting historical data for: " + ticker)
+    logger.setup([ticker, "Getting historical data"])
     if (data == undefined) {
         data = await MarketData.getHistoricSingle(ticker, settings.timeframe, settings.interval);
     }
-    logger.setup("Got historical data for: " + ticker)
+    logger.setup([ticker, "Historical data found"])
 
     for (var i = 0; i < this.strategies.length; i++) {
         var strategy = this.strategies[i];
-        logger.setup("Adding indicators to " + ticker)
+        logger.setup([ticker, "Adding indicators"])
         data = this.strategies[i].addIndicators(data);
-        logger.setup("Added indicators to " + ticker)
+        logger.setup([ticker, "Added indicators"])
 
         var buyStr = "buySignal_"+strategy.name;
         var sellStr = "buySignal_"+strategy.name;
@@ -274,6 +263,8 @@ trader.addStock = async function(ticker, data) {
 }
 
 trader.addStrategyByName = function(strategyName) {
+    this.strategies = [];
+    this.portfolio.strategies = [];
     var strategy = require("../strategies/"+strategyName);
     strategy.name = strategyName;
     this.strategies.push(strategy);

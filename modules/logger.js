@@ -1,5 +1,6 @@
 var chalk = require("chalk");
 var moment = require("moment");
+var settings = require("../settings");
 chalk.colorize = function(val, base, str) {
     if (val > base) {
         return chalk.bgGreen(chalk.black(str))
@@ -30,10 +31,21 @@ var logger = {
         this.mode = mode;
     },
     setup: function(text) {
-        this.log(["SETUP", text]);
+        if (settings.verbose) {
+            this.log(["SETUP", text]);
+        }
     },
     error: function(text, date) {
+        if (text[0].indexOf("ERROR") == -1) {
+            text = ["ERROR", text];
+        }
         this.log(text,date,"red");
+    },
+    warn: function(text, date) {
+        if (text[0].indexOf("WARN") == -1) {
+            text = [chalk.yellow("WARN"), text];
+        }
+        this.log(text,date);
     },
     success: function(text, date) {
         this.log(text,date,"green");

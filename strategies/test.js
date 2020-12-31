@@ -2,24 +2,25 @@ var data_forge_1 = require("data-forge");
 const tickers = require('../modules/tickers');
 
 module.exports = {
-    name: "Test Strategy",
+    description: "H3ka v0.2",
+    name: "H3ka v0.2",
     limitOrder: 2.20, // don't bother with this
     stopLoss: -0.03, // Stop out on 3% loss from entry price.
     acceptableLoss: 0,
     maxTradesOpen: 100,
     maxOpenPerTicker: 30000000,
     buySignalCashWeighting: 50,
-    secondPurchaseStockWeighting: 1,
-    firstPurchaseStockWeighting: 0.2,
+    secondPurchaseStockWeighting: 0.5,
+    firstPurchaseStockWeighting: 0.1,
     amountToSpend: function(info, totalCash, openTrades = [], openTradesSameTicker = [], allHoldings = {}) {
         this.maxTradesOpen = Math.min(50,tickers.active.length);
         var anyAtLoss = false;
-
+        var tradedBefore = openTradesSameTicker.length > 0;
         var maxTradsOpen
 
         for (var i = 0; i < openTradesSameTicker.length; i++) {
             openTradesSameTicker[i].currentValue({close: info.close});
-            if (openTradesSameTicker[i].data.profit < 0) {
+            if (openTradesSameTicker[i].data.profit < 0 && info.extrema != -1) {
                 throw new Error("Already at a loss with "+info.ticker+" ("+Math.round(openTradesSameTicker[i].data.profit)+")");
             }
 
@@ -31,8 +32,10 @@ module.exports = {
         if (openTrades && this.maxTradesOpen - openTrades.length <= 1) {
             return totalCash;
         }
-        var perTrade = totalCash / (this.maxTradesOpen - openTrades.length);
-
+        var perTrade = totalCash / (this.maxTradesOpen - openTrades.length );
+        if (tradedBefore) {
+            perTrade = totalCash / (this.maxTradesOpen - openTrades.length + 3 );
+        }
         if (openTradesSameTicker && openTradesSameTicker.length > 0 && this.secondSameStockWeighting) {
             perTrade = perTrade * this.secondPurchaseStockWeighting;
         } else {

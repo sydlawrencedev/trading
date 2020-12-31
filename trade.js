@@ -1,5 +1,6 @@
 var chalk = require("chalk");
 
+const logger = require('./modules/logger');
 const marketdata = require('./modules/marketdata');
 
 const readline = require('readline');
@@ -17,13 +18,22 @@ function askQuestion(query) {
     }))
 }
 
-chalk.colorize = function(val, base, str) {
+chalk.colorize = function(val, base, str, isBG = true) {
+    if (isBG) {
+        if (val > base) {
+            return chalk.bgGreen(chalk.black(str))
+        } else if (val < base) {
+            return chalk.bgRed(chalk.white(str))
+        } else {
+            return chalk.bgYellow(chalk.black(str))
+        }
+    }
     if (val > base) {
-        return chalk.bgGreen(chalk.black(str))
+        return chalk.green(str)
     } else if (val < base) {
-        return chalk.bgRed(chalk.white(str))
+        return chalk.red(str)
     } else {
-        return chalk.bgYellow(chalk.black(str))
+        return chalk.yellow(str)
     }
 }
 
@@ -67,12 +77,12 @@ gotBars = function(bars, moreToTry) {
    
     (async function() {
 
-        log("About to commence backtesting")
 
-        var requiresActivty = false;   
+        var requiresActivty = false;  
+        var  df;
         for (var j = 0; j < stocks.length; j++) {
             var stock = stocks[j];
-            var df = new dataForge.DataFrame(bars[stock])
+            df = new dataForge.DataFrame(bars[stock])
                 .transformSeries({
                     startEpochTime: value => new Date(value*1000)
                 })
@@ -86,13 +96,15 @@ gotBars = function(bars, moreToTry) {
                 
             // save to file
             df.reverse().renameSeries({time: "timestamp"}).asCSV()                            // Write out data file in CSV (or other) format.
-                .writeFileSync("data/"+marketdata.filename(stock,"minute","1min")+"-live-"+moment().format("YYYY-MM-DD-HH")+".csv");
+                .writeFileSync(process.mainModule.path+"/data/"+marketdata.filename(stock,"minute","1min")+"-live-"+moment().format("YYYY-MM-DD-HH")+".csv");
+
+
 
         }
 
         var trades = [];
         try {
-            trades = await trader.backtest(true);
+            trades = await trader.backtest();
         } catch (e) {
             console.log("ERROR");
             console.log(e);
@@ -100,20 +112,16 @@ gotBars = function(bars, moreToTry) {
         }
 
 
-        statusUpdate();
 
 
         trader.portfolio.holdings = {};
-        // console.log(trades);
 
         var attemptedTrades = {};
 
         trades = trades.filter(trade => trade.time >= df.last().time - 30 * 1000); 
 
-        log("Latest data: " + moment(df.last().time).format("DD/MM/YYYY HH:mm"));
-        log(trades.length + " suggested trades");
-        
-        console.log([moment().format("DD/MM/YYYY HH:mm:ss"), "STATUS",trades.length + " potential trades found"].join("\t"))
+        logger.status("Latest data: " + moment(df.last().time).format("DD/MM/YYYY HH:mm"));
+        logger.status(trades.length + " potential trades found")
 
         
         for (var i = 0; i < trades.length; i++) {
@@ -127,20 +135,19 @@ gotBars = function(bars, moreToTry) {
                         acceptableLoss = trader.strategies[0].acceptableLoss;
                         if (position.unrealized_plpc * 1 < acceptableLoss) {
                             toSell = false;
-
-                            console.log(chalk.red([
-                                moment().format("DD/MM/YYYY HH:mm:ss"),
+                            logger.warn([
                                 "SELL",
                                 trade.ticker,
                                 chalk.colorize(
                                     position.market_value*1,
                                     position.cost_basis*1,
-                                    (position.market_value - position.cost_basis).toFixed(2) + " ("+(position.unrealized_plpc * 100).toFixed(1)+"%)"
+                                    (position.market_value - position.cost_basis).toFixed(2) + " ("+(position.unrealized_plpc * 100).toFixed(1)+"%)",
+                                    false
                                 ),
                                 "Not selling at a loss",
                                 trade.sellSignal,
                                 trade.sellReason
-                            ].join("\t")));                            
+                            ]);                         
                         }
                     }
                     if (toSell) {
@@ -150,9 +157,8 @@ gotBars = function(bars, moreToTry) {
                         attemptedTrades[trade.ticker] = true;
                         var sellResponse = await sellStock(trade.ticker, position.qty);
 
-                        console.log(chalk.green([
-                            moment().format("DD/MM/YYYY HH:mm:ss"),
-                            "SELL",
+                        logger.alert([
+                            chalk.green("SELL"),
                             trade.ticker,
                             chalk.colorize(
                                 position.market_value*1,
@@ -162,29 +168,36 @@ gotBars = function(bars, moreToTry) {
                             Math.round(position.current_price)+"", Math.round(position.market_value)+"  ",
                             trade.sellSignal,
                             trade.sellReason
-                        ].join("\t")));
+                        ]); 
+
+                        var account = await alpaca.getAccount();
+                        var positions = await alpaca.getPositions();
+                        portfolio.updateFromAlpaca(account, positions);
                     }
                 } catch (e) {
                     if (e.error !== undefined && e.error.code == 40410000) {
                         // simply position doesn't currently exist
                     } else {
-                        // console.log("position doesn't exist with "+stock);
-                        console.log(chalk.red([
-                            moment().format("DD/MM/YYYY HH:mm:ss"),
+                        logger.warn([
                             "SELL",
                             trade.ticker,
-                            "ERROR",
+                            chalk.colorize(
+                                position.market_value*1,
+                                position.cost_basis*1,
+                                (position.market_value - position.cost_basis).toFixed(2) + " ("+(position.unrealized_plpc * 100).toFixed(1)+"%)"
+                            ),
                             e.error.code,
                             e.error.message,
+                            Math.round(position.current_price)+"", Math.round(position.market_value)+"  ",
                             trade.sellSignal,
                             trade.sellReason
-                        ].join("\t")));
+                        ]);
+                        
                     }
                 }
             }
 
             else if (trade.buySignal > trade.sellSignal) {
-                // console.log(trade);
                 try {
                     requiresActivty = true;
                     var account = await alpaca.getAccount();
@@ -194,20 +207,25 @@ gotBars = function(bars, moreToTry) {
                     var quantity = Math.floor(amountToSpend / trade.close);
                     amountToSpend = quantity * trade.close;
                     if (quantity > 0) {
-                        console.log(chalk.green([moment().format("DD/MM/YYYY HH:mm:ss"), "BUY ",trade.ticker,Math.round(quantity),Math.round(trade.close)+"", Math.round(amountToSpend)+"   ", trade.buySignal, trade.buyReason].join("\t")));
+                        
+                        
                         var purchase = await buyStock(trade.ticker, quantity, trade.close)
+
+                        portfolio.openTrade(trade.ticker, moment(), trade.close, trade);
+                        var account = await alpaca.getAccount();
+                        var positions = await alpaca.getPositions();
+                        portfolio.updateFromAlpaca(account, positions);
                     }
                 } catch (e) {
-                    console.log(chalk.red([
-                        moment().format("DD/MM/YYYY HH:mm:ss"),
+                    logger.error([
                         "BUY",
                         trade.ticker,
                         "ERROR",
                         e.message,
                         trade.buySignal,
                         trade.buyReason
-                        // e.error,
-                    ].join("\t")))
+                    ]);
+
                 }
                 
             }
@@ -216,29 +234,30 @@ gotBars = function(bars, moreToTry) {
         var account = await alpaca.getAccount();
         var positions = await alpaca.getPositions();
         portfolio.updateFromAlpaca(account, positions);
-
+        portfolio.logProfits();
+        portfolio.logStatus();
+        if (settings.alpacaRange == "day") {
+            logger.success("There are no more trades for today");
+        }
 
     })().catch(e => {
-        console.log(chalk.red([
-            moment().format("DD/MM/YYYY HH:mm:ss"),
+        logger.error([
             "ERROR",
-            e.message,
-            // e.error,
-        ].join("\t")))
-        
+            e.message
+        ]);
+        console.log(e);
     });
 }
 
 
 async function main(repeating) {
     if (repeating !== true) {
-        console.log([moment().format("DD/MM/YYYY HH:mm:ss"), "STATUS","Connecting to the markets and analyzing trades"].join("\t"))
-        await trader.addStrategyByName(settings.strategy);
+        logger.setup("Connecting to the markets and analyzing trades")
     }
+    await trader.addStrategyByName(settings.strategy);
     stocks = await tickers.fetch(settings.stockFile)
 
-    statusUpdate();
-    log("Adding " + stocks.length + " stocks")
+    logger.setup("Adding " + stocks.length + " stocks")
     
     alpaca.getAccount().then((account, err) => {
         if (!account) {
@@ -246,39 +265,26 @@ async function main(repeating) {
             console.log(account);
             console.log(err);
         }
-        // console.log(account);
-        var color = "yellow";
-        if (account.equity > startingCash )
-            color = "green";
-        else if (account.equity < startingCash)
-            color = "red";
-    
-        // console.log(account);
 
         alpaca.getPositions().then(positions => {
             portfolio.updateFromAlpaca(account, positions);
+            trader.portfolio.logStatus();
         });
           
-
         alpaca.getBars(
-            'minute',
+            settings.alpacaRange,
             stocks
         ).then(response => {
             gotBars(response, true);   
         }).catch(e => 
-            console.log(chalk.red([
-                moment().format("DD/MM/YYYY HH:mm:ss"),
+            logger.error([
                 "ERROR",
                 "Failed to get market data from alpaca",
                 e.error,
                 e.message
-            ].join("\t"))) 
+            ]) 
         );
-    
     });
-
-
-    
 }
 
 
@@ -311,76 +317,35 @@ orderStock = function(order, stock, qty, currentPrice) {
         time_in_force: 'day',
         take_profit: {
             limit_price: take_profit
-        }, // optional,
+        },
         stop_loss: {
             stop_price: stop_loss
-        }, // optional,
-    }).catch(e => {
-        // console.log("catch");
-        // console.log(e);
-    }).error(e => {
-        console.log("error");
-        // console.log(e);
-    });
+        },
+    })
+    .catch(e => logger.error(["ERROR",e.message]))
+    .error(e => logger.error(["ERROR",e.message]));
 }
 
-// sellStock("RIOT",2).then(e => console.log(e)).catch(e => console.log("error"));
+logger.setup([
+    "Stocklist: "+chalk.yellow(settings.stockFile),
+    "Strategy: "+chalk.yellow(settings.strategy)
+]);
 
-console.log([moment().format("DD/MM/YYYY HH:mm:ss"), "STATUS","Setting up", "Stocklist: "+chalk.yellow(settings.stockFile), "Strategy: "+chalk.yellow(settings.strategy)].join("\t"))
-
-
-
-statusUpdate = function() {
-    alpaca.getAccount().then(account => {
-
-        alpaca.getPositions().then(positions => {
-            portfolio.updateFromAlpaca(account, positions);
-                var profit = trader.portfolio.getProfit();
-                var hodlAverage = "N/A";
-                var roi = profit / startingCash;
-                try {
-                    var hodl = trader.getHODL("2020-12-29 09:00:00");
-                    console.log(hodl);
-                    function average(nums) {
-                        return nums.reduce((a, b) => (a + b)) / nums.length;
-                    }
-                    if (Object.values(hodl).length > 0) {
-                        hodlAverage = average(Object.values(hodl)).toFixed(5);
-                        hodlAverage = chalk.colorize(roi, hodlAverage, hodlAverage);
-                    }
-                } catch (e) {
-                    console.log(e);
-                    process.exit();
-                }
-                
-                console.log([moment().format("DD/MM/YYYY HH:mm:ss"), "STATUS",chalk.colorize(profit,0,"ROI: "+ roi.toFixed(5)), "Cash: $"+portfolio.cash.toFixed(0), "Portfolio: $"+Math.round(portfolio.portfolioValue), chalk.colorize(profit,0,"Profit: $"+profit.toFixed(0)), "HODL: "+hodlAverage].join("\t"))
-                console.log([moment().format("DD/MM/YYYY HH:mm:ss"), "STATUS","Active positions: "+positions.length].join("\t"))
-            
-        })
-    });
-}
-main().catch(e => {
-    console.log(chalk.red([
-        moment().format("DD/MM/YYYY HH:mm:ss"),
-        "ERROR",
-        e.message,
-        // e.error,
-    ].join("\t")))
+main().then(e => {
+    
+}).catch(e => {
+    logger.error(["ERROR",e.message])
 });
 
+if (settings.alpacaRange == "minute") {
+    setInterval(function() {
+        trader.portfolio.logStatus();
+    }, 5 * 60 * 1000);
+}
 
-setInterval(function() {
-    statusUpdate();
-}, 5 * 60 * 1000)
 
-
-setInterval(function() {
-    main(true).catch(e => {
-        console.log(chalk.red([
-            moment().format("DD/MM/YYYY HH:mm:ss"),
-            "ERROR",
-            e.message,
-            // e.error,
-        ].join("\t")))
-    });
-}, settings.tradingTimeout)
+// setInterval(function() {
+//     main(true).catch(e => {
+//         logger.error(["ERROR",e.message])
+//     });
+// }, settings.tradingTimeout)

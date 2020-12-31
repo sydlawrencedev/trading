@@ -7,14 +7,26 @@ if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
     console.log("Running in verbose mode");
 }
 
+stocks = "test";
+strategy = "test";
+
+if (process.argv[2] == "-cli") {
+    if (process.argv[3] !== undefined) {
+        stocks = process.argv[3];
+        if (process.argv[4] !== undefined) {
+            strategy = process.argv[4]
+        }
+    }
+}
+
 // var stocks = "watch";
 // stocks = "june2020undervalued";
-stocks = "watch";
+
 // stocks = "bear";
 settings = {   
     stockFile: stocks,
     stocks: stocks,
-    strategy: "test",
+    strategy: strategy,
     // strategy: "holdall",
     comparisons: ["h3ka", "rsi", "sma", "ema", "bollinger", "trendwatcher", "holdall"],
     comparisons: ["h3ka"],
@@ -26,9 +38,10 @@ settings = {
     tradingTimeout: 1 * 60 * 1000,
     timeframe: "daily", // daily, minute
     interval: false, // 1min, 5min, 15min, 30min, 60min, false if daily
+    tradingStart: "2020-12-30 00:00:00", 
     timeWindow: {
         start: "2020-10-01 00:00:00",
-        end: "2020-12-29 00:00:00",
+        end: "2020-12-30 00:00:00",
         // start: false // use all available data
     },
     thresholds: {
@@ -36,6 +49,12 @@ settings = {
         sell: 0
     },
     cashBaseWeighting: 50
+}
+
+if (settings.timeframe == "daily") {
+    settings.alpacaRange = "day";
+} else {
+    settings.alpacaRange = "minute";
 }
 
 module.exports = settings;

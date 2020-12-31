@@ -17,23 +17,69 @@ chalk.colorize = function(val, base, str) {
         return chalk.bgYellow(chalk.black(str))
     }
 }
-
-
 var startingCash = settings.startingCapital;
 
 var portfolio = {
     cash: startingCash,
     startingCash: startingCash,
-    display:false,
+    liveFromAlpaca: false,
     strategies: [],
     
     getROI: function() {
         return (this.portfolioValue - startingCash) / startingCash;
     },
     completedTrades: [],
-    profits: {},
+    takings: {},
+    spendings: {},
     holdings: {},
     portfolioValue: startingCash
+}
+
+portfolio.logProfits = function(time = settings.timeWindow.start) {
+    this.calculate();
+    var hodl = this.getHODL(time);
+    var profits = this.getProfits();
+    for (var i in profits) {
+        logger.log([
+            "STOCK",
+            i,
+            chalk.colorize(profits[i],0,"ROI: " + profits[i].toFixed(5)),
+            chalk.colorize(profits[i],0,"Profit: " + (profits[i] * 100).toFixed(2)+"%"),
+            chalk.colorize(profits[i],hodl[i],"HODL: " + (hodl[i] * 100).toFixed(2)+"%"),
+            "Out: $"+Math.round(this.spendings[i]),
+            "In: $"+Math.round(this.takings[i]),
+
+        ]);
+    }
+}
+
+portfolio.logHoldings = function(time = settings.timeWindow.start) {
+    this.calculate();
+    var hodl = this.getHODL(time);
+    var holdings = this.holdings;
+    for (var i in holdings) {
+        var holding = holdings[i][0];
+        var profit = holding.data.entry.info.unrealized_plpc * 1;
+        logger.log([
+            "STOCK",
+            i,
+            chalk.colorize(profit,0,"ROI: " + profit.toFixed(5)),
+            chalk.colorize(profit,0,"Profit: " + (profit * 100).toFixed(2)+"%"),
+            chalk.colorize(profit,hodl[i],"HODL: " + (hodl[i] * 100).toFixed(2)+"%"),
+            "Entry: "+(holding.data.entry.info.avg_entry_price * 1).toFixed(2),
+            "Now: "+(holding.data.currentPrice * 1).toFixed(2),
+            "Total: "+(holding.data.entry.info.market_value * 1).toFixed(2),
+
+        ]);
+    }
+}
+
+portfolio.getProfits = function() {
+    var profits = {};
+    for (var i in this.spendings) {
+        profits[i] = (this.takings[i] - this.spendings[i]) / this.spendings[i]
+    }
+    return profits;
 }
 
 portfolio.openTrades = function() {
@@ -53,20 +99,25 @@ portfolio.logStatus = function(time = settings.timeWindow.start) {
     function average(nums) {
         return nums.reduce((a, b) => (a + b)) / nums.length;
     }
-    var hodlAverage = "N/A";
+    var hodlAverage = "HODL: N/A";
     if (Object.values(hodl).length > 0) {
-        hodlAverage = average(Object.values(hodl)).toFixed(5);
-        hodlAverage = chalk.colorize(roi , hodlAverage, hodlAverage);
+        hodlAverage = average(Object.values(hodl))
+        hodlAverage = chalk.colorize(roi , hodlAverage, "HODL: "+(hodlAverage*100).toFixed(2)+"%");
     }
-    console.log(hodl);
 
     logger.log([
         "STATUS",
+        "Strategy: "+chalk.yellow(this.strategies[0].description),
+        "Stocklist: "+chalk.yellow(settings.stockFile),
+        "Range: "+chalk.yellow(settings.alpacaRange),
+    ])
+    logger.log([
+        "STATUS",
         chalk.colorize(roi,0,"ROI: "+ roi.toFixed(5)),
-        "Cash: $"+this.cash.toFixed(0),
-        "Portfolio: $"+Math.round(this.portfolioValue),
         chalk.colorize(roi,0,"Profit: "+(roi * 100).toFixed(2)+"%"),
-        "HODL: "+ hodlAverage,    
+        hodlAverage,
+        "Portfolio: $"+Math.round(this.portfolioValue),
+        "Cash: $"+this.cash.toFixed(0),            
     ])
 }
 
@@ -81,6 +132,9 @@ portfolio.uniqueOpenTrades = function() {
 }
 
 portfolio.calculate = function() {
+    if (this.liveFromAlpaca) {
+        return;
+    }
     this.portfolioValue = 0; 
     var openTrades = this.openTrades();
     for (var i = 0; i < openTrades.length; i++) {
@@ -93,6 +147,7 @@ portfolio.calculate = function() {
 }
 
 portfolio.updateFromAlpaca = function(account, holdings) {
+    this.liveFromAlpaca = true;
     this.cash = account.cash * 1;
     this.portfolioValue = account.portfolio_value * 1;
 
@@ -125,15 +180,13 @@ portfolio.openTrade = function(stock, time, price, info) {
     try {
     var cashToSpend = this.getAmountToSpend(info);
     } catch (e) {
-        if (this.display) {
-            logger.error([
-                "BUY ",
-                stock,
-                e.message,
-                info.buySignal,
-                info.buyReason
-            ], moment(time));
-        }
+        logger.error([
+            "BUY ",
+            stock,
+            e.message,
+            info.buySignal,
+            info.buyReason
+        ], moment(time));
         return;
     }
     var quantity = cashToSpend / price;
@@ -155,9 +208,13 @@ portfolio.openTrade = function(stock, time, price, info) {
 
         return;
     }
+    if (this.spendings[stock] == undefined) {
+        this.spendings[stock] = 0;
+    }
+    this.spendings[stock] += cashToSpend;
 
     logger.alert([
-        "BUY ",
+        chalk.green("BUY "),
         stock,
         Math.round(quantity),
         Math.round(price)+"     ",
@@ -191,13 +248,13 @@ portfolio.closeAll = function(stock, details) {
 
         if (acceptableLoss <= details.price || details.force == true) {
             trade.exitPosition(details.time, details.price, details.info, details.reason);
-            if (this.profits[stock] == undefined) {
-                this.profits[stock] = 0;
+            if (this.takings[stock] == undefined) {
+                this.takings[stock] = 0;
             }
-            this.profits[stock] += trade.data.profit;
+            this.takings[stock] += total;
             
             logger.alert([
-                "SELL",
+                chalk.green("SELL"),
                 stock,
                 chalk.colorize(
                     trade.data.profit,

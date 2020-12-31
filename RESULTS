@@ -1,32 +1,15 @@
-https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=TSLA&apikey=0OV8QTDPW5IYCHSN&datatype=csv
 
-Profit, when starting from 10000
 
-        Grademark base
+Starting capital 100,000
 
-IBM     -65
-NIO     -308
-PLTR    -1009
-GME     -480
-TLRY    -2283
-GLBS    -2383
-ICD     -160
+For the entirety of 2020
 
-LOSERS  -6,688
-
-QS      474
-XPEV    885
-FCEL    465
-GBPUSD  1030
-STW     2058
-WORK    2090
-JCP     2376
-MITT    636
-REPH    8754
-JE      6945
-AHT     13261
-FARM    8272
-
-WINS    47,245
-
-TOTAL   40,557
+stocklist               hodl    30/12/2020
+watch                   1.6927  5.45141
+bear                    -1.0673 0.61005
+syd                     3.10294 1.23604 
+june2020undervalued     0.02997 0.61511
+dec2019wsb              0.67179 0.66532
+dec2020wsb                      0.51811
+biggest2020stocks               1.59983
+crypto
