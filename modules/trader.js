@@ -224,6 +224,10 @@ trader.addStock = async function(ticker, data) {
     if (data == undefined) {
         data = await MarketData.getHistoricSingle(ticker, settings.timeframe, settings.interval);
     }
+    if (data == false) {
+        logger.error([ticker, "No data found"])
+        return;
+    }
     logger.setup([ticker, "Historical data found"])
 
     for (var i = 0; i < this.strategies.length; i++) {

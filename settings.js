@@ -1,10 +1,11 @@
 var keys = require("./.keys");
+var chalk = require("chalk");
 
 
 var verbose = false;
 if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
     verbose = true;
-    console.log("Running in verbose mode");
+    console.log(chalk.green("Running in verbose mode"));
 }
 
 stocks = "test";
@@ -38,9 +39,9 @@ settings = {
     tradingTimeout: 1 * 60 * 1000,
     timeframe: "daily", // daily, minute
     interval: false, // 1min, 5min, 15min, 30min, 60min, false if daily
-    tradingStart: "2020-12-30 00:00:00", 
+    tradingStart: "2021-01-01 00:00:00", 
     timeWindow: {
-        start: "2020-10-01 00:00:00",
+        start: "2020-01-01 00:00:00",
         end: "2020-12-30 00:00:00",
         // start: false // use all available data
     },

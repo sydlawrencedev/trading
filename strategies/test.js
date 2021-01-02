@@ -2,28 +2,38 @@ var data_forge_1 = require("data-forge");
 const tickers = require('../modules/tickers');
 
 module.exports = {
-    description: "H3ka v0.2",
-    name: "H3ka v0.2",
-    limitOrder: 2.20, // don't bother with this
-    stopLoss: -0.03, // Stop out on 3% loss from entry price.
-    acceptableLoss: 0,
-    maxTradesOpen: 100,
+    description: "H3ka v0.3",
+    name: "H3ka v0.3",
+    limitOrder: 2.20, // no acceptable limit order
+    stopLoss: -200, // it'll never stop loss
+    acceptableLoss: 0, // there is no acceptable loss
+    maxTradesOpen: 100, // each stock should be able to have some form of opening
     maxOpenPerTicker: 30000000,
+    maxHolding: 0.2, // max holding 20% of the portfolio
     buySignalCashWeighting: 50,
     secondPurchaseStockWeighting: 0.5,
     firstPurchaseStockWeighting: 0.1,
-    amountToSpend: function(info, totalCash, openTrades = [], openTradesSameTicker = [], allHoldings = {}) {
+    maxBuyMoreProfit: 0.03,
+    maxBuyMoreLoss: -0.02,
+    amountToSpend: function(info, totalCash, openTrades = [], openTradesSameTicker = [], allHoldings = {}, portfolio) {
         this.maxTradesOpen = Math.min(50,tickers.active.length);
         var anyAtLoss = false;
         var tradedBefore = openTradesSameTicker.length > 0;
-        var maxTradsOpen
-
+        var totalHolding = 0;
         for (var i = 0; i < openTradesSameTicker.length; i++) {
-            openTradesSameTicker[i].currentValue({close: info.close});
-            if (openTradesSameTicker[i].data.profit < 0 && info.extrema != -1) {
+            totalHolding += openTradesSameTicker[i].currentValue({close: info.close});
+            
+            if (openTradesSameTicker[i].data.profit < this.maxBuyMoreLoss) {
                 throw new Error("Already at a loss with "+info.ticker+" ("+Math.round(openTradesSameTicker[i].data.profit)+")");
             }
+            if (openTradesSameTicker[i].data.profit > this.maxBuyMoreProfit ) {
+               throw new Error("Already got too much profit in this one: "+info.ticker+" ("+Math.round(openTradesSameTicker[i].data.profit)+")");
+           }
 
+        }
+        var currentValue = portfolio.currentValue();
+        if (totalHolding > currentValue * this.maxHolding) {
+            throw new Error("Already holding " + Math.round(totalHolding / currentValue) + "% "+info.ticker);
         }
         if (openTradesSameTicker.length >= this.maxOpenPerTicker) {
             throw new Error("Already at max "+info.ticker+ " x"+this.maxOpenPerTicker+"");

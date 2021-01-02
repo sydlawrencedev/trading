@@ -3,6 +3,10 @@ var fs = require('fs');
 
 var tickers = {
     active: [],
+    activeFile: "",
+    refetch: function() {
+        return this.fetch(this.activeFile);
+    },
     addTicker: function(ticker) {
         if (ticker && ticker[0] !== ".") {
             tricker = ticker.trim()
@@ -10,9 +14,10 @@ var tickers = {
         }
     },
     fetch: async function(csv, cb) {
+        this.activeFile = csv;
         this.active = [];
         // console.log("Using '"+csv +"' stocks");
-        var contents = fs.readFileSync(process.mainModule.path+'/stocks/'+csv+".csv", 'utf8').split("\n");
+        var contents = await fs.readFileSync(process.mainModule.path+'/stocks/'+csv+".csv", 'utf8').split("\n");
         for (var i = 0; i < contents.length; i++) {
             tickers.addTicker(contents[i].trim());
         }

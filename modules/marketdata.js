@@ -3,6 +3,7 @@ const axios = require('axios');
 const fs = require('fs');
 const moment = require('moment');
 const logger = require('./logger');
+const tickers = require('./tickers');
 
 const dataForge = require('data-forge');
 require('data-forge-fs'); // For loading files.
@@ -42,6 +43,7 @@ var  MarketData = {
         if (response.status == 200) {
             logger.success([stockTicker,"Downloaded historical stock data"]);
             try {
+                tickers.refetch();
                 await fs.unlinkSync(filename);
             } catch (e) {
                 
@@ -52,11 +54,7 @@ var  MarketData = {
                     dateFormat = "YYYY-MM-DD HH:mm:ss";
             }
             var s = await response.data.pipe(fs.createWriteStream(filename));
-            
             await sleep(10000);
-            var single = await this.getHistoricSingle(stockTicker,timeframe,interval);
-            return single;
-            return;
             var single = await this.getHistoricSingle(stockTicker,timeframe,interval);
             return single;
         } else {
@@ -83,6 +81,16 @@ var  MarketData = {
                 // if it's an error file
                 if (f.length == 0 || f.toString()[0] === "{") {
                     // delete the file
+
+                    if (f.toString()[0] === "{") {
+                        var rsp = JSON.parse(f.toString());
+                        if (rsp["Error Message"]) {
+                            logger.error([stockTicker,rsp["Error Message"]]);
+                            return false;
+                        }
+
+                    }
+
                     await fs.unlinkSync(filename);
                     await sleep(2);
                     return this.getHistoricSingle(stockTicker, timeframe, interval);
@@ -128,7 +136,7 @@ var  MarketData = {
 
         if (df.count() == 0) {
             // console.log(x.toString());
-            throw new Error("No data found for "+stockTicker + " " + moment(settings.timeWindow.start) + " -> " + moment(settings.timeWindow.end));
+            logger.error([stockTicker,"No data found for "+moment(settings.timeWindow.start) + " -> " + moment(settings.timeWindow.end)]);
         }
 
         return df;

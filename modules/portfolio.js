@@ -56,16 +56,21 @@ portfolio.logProfits = function(time = settings.timeWindow.start) {
 portfolio.logHoldings = function(time = settings.timeWindow.start) {
     this.calculate();
     var hodl = this.getHODL(time);
-    var holdings = this.holdings;
+    var holdings = Object.values(this.holdings);
+
+    holdings.sort((a,b) => {
+        return a[0].data.entry.info.market_value * 1 - b[0].data.entry.info.market_value * 1;
+    });
+
     for (var i in holdings) {
         var holding = holdings[i][0];
         var profit = holding.data.entry.info.unrealized_plpc * 1;
         logger.log([
             "STOCK",
-            i,
+            holding.ticker,
             chalk.colorize(profit,0,"ROI: " + profit.toFixed(5)),
             chalk.colorize(profit,0,"Profit: " + (profit * 100).toFixed(2)+"%"),
-            chalk.colorize(profit,hodl[i],"HODL: " + (hodl[i] * 100).toFixed(2)+"%"),
+            chalk.colorize(profit,hodl[i],"HODL: " + (hodl[holding.ticker] * 100).toFixed(2)+"%"),
             "Entry: "+(holding.data.entry.info.avg_entry_price * 1).toFixed(2),
             "Now: "+(holding.data.currentPrice * 1).toFixed(2),
             "Total: "+(holding.data.entry.info.market_value * 1).toFixed(2),
@@ -131,6 +136,11 @@ portfolio.uniqueOpenTrades = function() {
     return Object.values(trades);
 }
 
+portfolio.currentValue = function() {
+    this.calculate();
+    return this.portfolioValue;
+}
+
 portfolio.calculate = function() {
     if (this.liveFromAlpaca) {
         return;
@@ -172,7 +182,9 @@ portfolio.getAmountToSpend = function(info) {
         info,
         this.cash,
         this.uniqueOpenTrades(),
-        this.holdings[info.ticker]
+        this.holdings[info.ticker],
+        this.holdings,
+        this
     );
 }
 
