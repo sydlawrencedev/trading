@@ -41,7 +41,7 @@ trader.addStocks = async function(stocks) {
 trader.getLastTradeTime = async function() {
     var m = myCache.getSync("last-trade-time");
     if (m) {
-        return moment(m);
+        return Math.max(moment(settings.tradingStart), moment(m));
     }
     return moment(settings.tradingStart);
 }

@@ -106,10 +106,10 @@ portfolio.logStatus = async function(time = settings.timeWindow.start) {
     function average(nums) {
         return nums.reduce((a, b) => (a + b)) / nums.length;
     }
-    var hodlAverage = "HODL: N/A";
+    var hodlAverageText = "HODL: N/A";
     if (Object.values(hodl).length > 0) {
         hodlAverage = average(Object.values(hodl))
-        hodlAverage = chalk.colorize(roi , hodlAverage, "HODL: "+(hodlAverage*100).toFixed(2)+"%");
+        hodlAverageText = chalk.colorize(roi , hodlAverage, "HODL: "+(hodlAverage*100).toFixed(2)+"%");
     }
 
     logger.log([
@@ -123,7 +123,7 @@ portfolio.logStatus = async function(time = settings.timeWindow.start) {
         "STATUS",
         chalk.colorize(roi,0,"ROI: "+ roi.toFixed(5)),
         chalk.colorize(roi,0,"Profit: "+(roi * 100).toFixed(2)+"%"),
-        hodlAverage,
+        hodlAverageText,
         "Portfolio: $"+Math.round(this.portfolioValue),
         "Cash: $"+this.cash.toFixed(0),            
     ]);
