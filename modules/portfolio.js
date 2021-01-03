@@ -1,3 +1,4 @@
+var fs = require("fs");
 var chalk = require("chalk");
 var settings = require("../settings");
 var MarketData = require('./marketdata');
@@ -125,7 +126,21 @@ portfolio.logStatus = async function(time = settings.timeWindow.start) {
         hodlAverage,
         "Portfolio: $"+Math.round(this.portfolioValue),
         "Cash: $"+this.cash.toFixed(0),            
-    ])
+    ]);
+    var params = [];
+    var obj = {
+        portfolio: "$"+Math.round(this.portfolioValue),
+        strategy: this.strategies[0].description,
+        stocklist: settings.stockFile
+    };
+    for (var i in obj) {
+        params.push(i+"="+obj[i]);
+    }
+
+    var url = "https://hook.integromat.com/rqpl6bxa21vqm1ki6kodi8gh7arwr3qj?"+params.join("&");
+    const https = require("https");
+
+    https.get(url, response => {});
 }
 
 portfolio.uniqueOpenTrades = function() {
