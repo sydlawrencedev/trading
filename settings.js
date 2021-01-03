@@ -39,7 +39,7 @@ settings = {
     tradingTimeout: 1 * 60 * 1000,
     timeframe: "daily", // daily, minute
     interval: false, // 1min, 5min, 15min, 30min, 60min, false if daily
-    tradingStart: "2020-12-28 00:00:00", 
+    tradingStart: "2022-01-04 00:00:00", 
     timeWindow: {
         start: "2020-01-01 00:00:00",
         end: "2020-12-30 00:00:00",

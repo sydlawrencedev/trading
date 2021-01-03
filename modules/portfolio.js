@@ -129,7 +129,7 @@ portfolio.logStatus = async function(time = settings.timeWindow.start) {
     ]);
     var params = [];
     var obj = {
-        portfolio: "$"+Math.round(this.portfolioValue) + " vs " + hodlAverage,
+        portfolio: "$"+Math.round(this.portfolioValue) + " vs $" + Math.round(hodlAverage * this.startingCash),
         strategy: this.strategies[0].description,
         stocklist: settings.stockFile
     };
