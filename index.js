@@ -70,14 +70,13 @@ function processArgs(args) {
 
 async function main() {
  
-    var hodl = await trader.getSingleHodl("AAPL", "2019-01-01");
-    console.log("hodl aapl");
-    console.log(hodl);
-
-
+ 
     var myArgs = process.argv.slice(2);
     var options = processArgs(myArgs);;
     var allResults = [];
+
+
+    logger.setMode("backtesting_"+settings.strategy+"_"+settings.stockFile);
 
     logger.log([
         "STATUS",
@@ -86,6 +85,8 @@ async function main() {
         "Stocklist: "+chalk.yellow(settings.stockFile),
         "Starting capital: $"+settings.startingCapital         
     ])
+
+
 
 
     await trader.addStrategyByName(settings.strategy);

@@ -251,6 +251,10 @@ gotBars = function(bars, moreToTry) {
 
 
 async function main(repeating) {
+
+
+    logger.setMode("trading_"+settings.strategy+"_"+settings.stockFile);
+
     if (repeating !== true) {
         logger.setup("Connecting to the markets and analyzing trades")
     }

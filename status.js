@@ -2,7 +2,6 @@ var chalk = require("chalk");
 
 const logger = require('./modules/logger');
 const marketdata = require('./modules/marketdata');
-
 const readline = require('readline');
 const moment = require('moment');
 
@@ -71,6 +70,14 @@ const strategy = strat.strategy;
 
 
 async function main(repeating) {
+
+    logger.setMode("status_"+settings.strategy+"_"+settings.stockFile);
+
+    logger.setup([
+        "Stocklist: "+chalk.yellow(settings.stockFile),
+        "Strategy: "+chalk.yellow(settings.strategy)
+    ]);
+
     if (repeating !== true) {
         logger.setup("Connecting to the markets and analyzing trades")
     }
@@ -98,10 +105,7 @@ async function main(repeating) {
 
 
 
-logger.setup([
-    "Stocklist: "+chalk.yellow(settings.stockFile),
-    "Strategy: "+chalk.yellow(settings.strategy)
-]);
+
 
 main().then(e => {
     

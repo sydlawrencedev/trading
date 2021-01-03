@@ -1,4 +1,5 @@
 var chalk = require("chalk");
+var fs = require("fs");
 var moment = require("moment");
 var settings = require("../settings");
 chalk.colorize = function(val, base, str) {
@@ -13,7 +14,26 @@ chalk.colorize = function(val, base, str) {
 
 var logger = {
     verbose: true,
+    mode: "unknown",
+    toLog: [],
+    writeLogToFile: function() {
+        if (this.toLog.length > 0 && !this.isLogging) {
+            this.isLogging = true;
+            var filename = process.mainModule.path+"/logs/log_"+this.mode+"_"+moment().format("YYYY-MM-DD-HH")+".log";
+            var t = {
+                timestamp: (new Date()).getTime(),
+                text: this.toLog.shift(),
+            }
+            fs.appendFile(filename, JSON.stringify(t)+"\n", e => {
+                logger.writeLogToFile();
+            });
+        } else {
+            this.isLogging = false;
+        }
+    },
     log: function(text, date = moment(), chalkColor = false) {
+        this.toLog.push(text);
+        this.writeLogToFile();
         if (typeof text !== "string") {
             text = text.flat().join("\t");
         }
