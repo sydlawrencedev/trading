@@ -13,8 +13,8 @@ module.exports = {
     buySignalCashWeighting: 50,
     secondPurchaseStockWeighting: 0.5,
     firstPurchaseStockWeighting: 0.1,
-    maxBuyMoreProfit: 0.03,
-    maxBuyMoreLoss: -0.02,
+    maxBuyMoreProfit: 0.50,
+    maxBuyMoreLoss: -0.05,
     amountToSpend: function(info, totalCash, openTrades = [], openTradesSameTicker = [], allHoldings = {}, portfolio) {
         this.maxTradesOpen = Math.min(50,tickers.active.length);
         var anyAtLoss = false;
