@@ -38,6 +38,18 @@ trader.addStocks = async function(stocks) {
     return this;
 }
 
+trader.getLastTradeTime = async function() {
+    var m = myCache.getSync("last-trade-time");
+    if (m) {
+        return moment(m);
+    }
+    return moment(settings.tradingStart);
+}
+
+trader.saveLastTradeTime = function() {
+    myCache.putSync("last-trade-time", moment())
+}
+
 trader.backtest = async function(andThenPerformTrades = false) {
     return await this.determineTrades(andThenPerformTrades);
 }

@@ -113,12 +113,15 @@ gotBars = function(bars, moreToTry) {
 
 
 
+        var timeOfLastTrade = await trader.getLastTradeTime();
+
+
 
         trader.portfolio.holdings = {};
 
         var attemptedTrades = {};
 
-        trades = trades.filter(trade => trade.time >= df.last().time - 30 * 1000); 
+        trades = trades.filter(trade => trade.time > timeOfLastTrade); 
 
         logger.status("Latest data: " + moment(df.last().time).format("DD/MM/YYYY HH:mm"));
         logger.status(trades.length + " potential trades found")
@@ -236,8 +239,9 @@ gotBars = function(bars, moreToTry) {
         portfolio.updateFromAlpaca(account, positions);
         portfolio.logProfits();
         portfolio.logStatus();
+        trader.saveLastTradeTime();
         if (settings.alpacaRange == "day") {
-            logger.success("There are no more trades for today");
+            return logger.success("There are no more trades for today");
         }
 
     })().catch(e => {
@@ -340,7 +344,6 @@ main().then(e => {
 }).catch(e => {
     logger.error(["ERROR",e.message])
 });
-
 if (settings.alpacaRange == "minute") {
     setInterval(function() {
         trader.portfolio.logStatus();

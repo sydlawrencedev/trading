@@ -29,5 +29,8 @@
     "persistent-cache": "^1.1.1",
     "plot": "^1.0.6",
     "terminal-image": "^1.2.1"
-  }
+  },
+  "nodemonConfig": {
+    "ignore": ["data", "logs", "cache", "strategies", "stocks"]
+}
 }

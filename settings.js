@@ -20,7 +20,7 @@ if (process.argv[2] == "-cli") {
     }
 }
 
-// var stocks = "watch";
+stocks = "watch";
 // stocks = "june2020undervalued";
 
 // stocks = "bear";
