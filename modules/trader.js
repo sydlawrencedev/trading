@@ -1,11 +1,24 @@
 var moment = require("moment");
 var chalk = require("chalk");
 var settings = require("../settings");
+var tickers = require('./tickers');
 var MarketData = require('./marketdata');
 var Trade = require('./trade');
 var logger = require('./logger');
 var portfolio = require('./portfolio');
+var cache = require('persistent-cache');
+var myCache = cache();
 
+
+const Alpaca = require('@alpacahq/alpaca-trade-api')
+
+process.env.APCA_API_KEY_ID = settings.alpaca.key;
+process.env.APCA_API_SECRET_KEY = settings.alpaca.secret;
+process.env.APCA_API_BASE_URL = settings.alpaca.endpoint;
+
+const alpaca = new Alpaca({
+    usePolygon: false
+});
 const dataForge = require('data-forge');
 require('data-forge-fs'); // For loading files.
 require('data-forge-indicators'); // For the moving average indicator.
@@ -201,18 +214,56 @@ trader.performTrades = function(combinedStockData, combinedTrades) {
     }
 }
 
-trader.portfolio.getHODL = trader.getHODL = function(startTime = settings.timeWindow.start) {
-    var hodl = {};
-    for (var i in trader.stocks) {
-        var data = trader.stocks[i];
-        if (data.count() > 0) {
-            var close = data.last().close
-            var start = data.where(row => row.time >= moment(startTime));
-            if (start.count() > 0) {
-                start = start.first();
-                hodl[i] = (close - start.close ) / start.close;
-            }
+trader.getSingleHodl = async function(ticker, startTime = settings.timeWindow.start) {
+    
+
+    var cacheKey = "hodl_"+ticker+"_"+startTime;
+
+    var hodl = myCache.getSync(cacheKey); //{ color: 'red' }
+
+    if (hodl && hodl != 0) {
+        return hodl;
+    }
+    
+    var data = this.stocks[ticker];
+    var close, start;
+    if (data && data.count() > 0) {
+        close = data.last().close
+        start = data.where(row => row.time >= moment(startTime));
+        if (start.count() > 0) {
+            start = start.first().close;
+        } else {
+            start = undefined;
         }
+    }
+    if (start == undefined) {
+        var startBars = await alpaca.getBars( 'day', ticker, { limit: 2, end: moment(startTime).format()})
+        if (startBars[ticker].length == 0) {
+            startBars = await alpaca.getBars( 'day', ticker, { limit: 2, after: moment(startTime).format()})
+        }
+        if (startBars[ticker].length == 0) {
+            start = 1;
+        } else {
+            start = startBars[ticker][0].closePrice;
+        }
+    }
+    if (close == undefined) {
+        var closeBars = await alpaca.getBars( 'day', ticker, { limit: 2, end: moment().format()})
+        if (closeBars[ticker].length == 0) {
+            close = 1;
+        } else {
+            close = closeBars[ticker][closeBars[ticker].length - 1].closePrice;
+        }
+    }
+    var resp = (close - start ) / start;
+    myCache.putSync(cacheKey, resp);
+    return resp;
+}
+
+trader.portfolio.getHODL = trader.getHODL = async function(stocks, startTime = settings.timeWindow.start) {
+    var hodl = {};
+    for (var i = 0; i < stocks.length; i++) {
+        hodl[stocks[i]] = await trader.getSingleHodl(stocks[i], startTime);
     }
     return hodl;
 }

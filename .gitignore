@@ -61,3 +61,5 @@ typings/
 .next
 *.bak
 .keys.js
+
+cache

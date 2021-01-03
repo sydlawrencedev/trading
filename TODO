@@ -1,17 +1,10 @@
-only buy more if +2% profit > -2% loss
 
-max holding per stock
-
-
-make hodl work when live
-
+cache hodl data
 store logs and trades in a file
-
-make live trading work with webhooks
-
-
-
+better way of managing the stock list
+Add to crontab
 get live
+make live trading work with webhooks
 
 
 backtest 

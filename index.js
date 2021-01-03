@@ -13,6 +13,8 @@ chalk.colorize = function(val, base, str) {
     }
 }
 
+
+
 var stratName = settings.strategy;
 var strat;
 try {
@@ -68,6 +70,11 @@ function processArgs(args) {
 
 async function main() {
  
+    var hodl = await trader.getSingleHodl("AAPL", "2019-01-01");
+    console.log("hodl aapl");
+    console.log(hodl);
+
+
     var myArgs = process.argv.slice(2);
     var options = processArgs(myArgs);;
     var allResults = [];

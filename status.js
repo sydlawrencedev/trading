@@ -88,9 +88,9 @@ async function main(repeating) {
 
         alpaca.getPositions().then(async positions => {
             await portfolio.updateFromAlpaca(account, positions);
-            trader.portfolio.logProfits(settings.tradingStart);
-            trader.portfolio.logHoldings(settings.tradingStart);
-            trader.portfolio.logStatus();
+            await trader.portfolio.logProfits(settings.tradingStart);
+            await trader.portfolio.logHoldings(settings.tradingStart);
+            await trader.portfolio.logStatus(settings.tradingStart);
         });
     });
 }

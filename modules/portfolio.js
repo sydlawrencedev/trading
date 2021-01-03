@@ -9,9 +9,9 @@ const logger = require('./logger');
 
 
 chalk.colorize = function(val, base, str) {
-    if (val > base) {
+    if (val * 1 > base * 1) {
         return chalk.bgGreen(chalk.black(str))
-    } else if (val < base) {
+    } else if (val * 1 < base * 1) {
         return chalk.bgRed(chalk.white(str))
     } else {
         return chalk.bgYellow(chalk.black(str))
@@ -35,17 +35,17 @@ var portfolio = {
     portfolioValue: startingCash
 }
 
-portfolio.logProfits = function(time = settings.timeWindow.start) {
+portfolio.logProfits = async function(time = settings.timeWindow.start) {
     this.calculate();
-    var hodl = this.getHODL(time);
     var profits = this.getProfits();
+    var hodl = await this.getHODL(Object.keys(profits), time);
     for (var i in profits) {
         logger.log([
             "STOCK",
             i,
             chalk.colorize(profits[i],0,"ROI: " + profits[i].toFixed(5)),
             chalk.colorize(profits[i],0,"Profit: " + (profits[i] * 100).toFixed(2)+"%"),
-            chalk.colorize(profits[i],hodl[i],"HODL: " + (hodl[i] * 100).toFixed(2)+"%"),
+            chalk.colorize(profits[i],hodl[i] * 1,"HODL: " + (hodl[i] * 100).toFixed(2)+"%"),
             "Out: $"+Math.round(this.spendings[i]),
             "In: $"+Math.round(this.takings[i]),
 
@@ -53,9 +53,10 @@ portfolio.logProfits = function(time = settings.timeWindow.start) {
     }
 }
 
-portfolio.logHoldings = function(time = settings.timeWindow.start) {
+portfolio.logHoldings = async function(time = settings.timeWindow.start) {
     this.calculate();
-    var hodl = this.getHODL(time);
+    var holdings = Object.values(this.holdings);
+    var hodl = await this.getHODL(Object.keys(this.holdings), time);
     var holdings = Object.values(this.holdings);
 
     holdings.sort((a,b) => {
@@ -66,13 +67,13 @@ portfolio.logHoldings = function(time = settings.timeWindow.start) {
         var holding = holdings[i][0];
         var profit = holding.data.entry.info.unrealized_plpc * 1;
         logger.log([
-            "STOCK",
+            "HOLD",
             holding.ticker,
             chalk.colorize(profit,0,"ROI: " + profit.toFixed(5)),
             chalk.colorize(profit,0,"Profit: " + (profit * 100).toFixed(2)+"%"),
-            chalk.colorize(profit,hodl[i],"HODL: " + (hodl[holding.ticker] * 100).toFixed(2)+"%"),
+            chalk.colorize(profit,hodl[holding.ticker],"HODL: " + (hodl[holding.ticker] * 100).toFixed(2)+"%"),
             "Entry: "+(holding.data.entry.info.avg_entry_price * 1).toFixed(2),
-            "Now: "+(holding.data.currentPrice * 1).toFixed(2),
+            "Now: "+(holding.data.entry.info.current_price * 1).toFixed(2),
             "Total: "+(holding.data.entry.info.market_value * 1).toFixed(2),
 
         ]);
@@ -97,10 +98,10 @@ portfolio.openTrades = function() {
     return trades;
 }
 
-portfolio.logStatus = function(time = settings.timeWindow.start) {
+portfolio.logStatus = async function(time = settings.timeWindow.start) {
     this.calculate();
     var roi = this.getROI();
-    var hodl = this.getHODL(time);
+    var hodl = await this.getHODL(tickers.active,time);
     function average(nums) {
         return nums.reduce((a, b) => (a + b)) / nums.length;
     }
@@ -115,6 +116,7 @@ portfolio.logStatus = function(time = settings.timeWindow.start) {
         "Strategy: "+chalk.yellow(this.strategies[0].description),
         "Stocklist: "+chalk.yellow(settings.stockFile),
         "Range: "+chalk.yellow(settings.alpacaRange),
+        "Trading start: "+chalk.yellow(moment(time).format("DD/MM/YY")),
     ])
     logger.log([
         "STATUS",

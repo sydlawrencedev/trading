@@ -56,6 +56,10 @@ class Trade {
         return this;
     };
 
+    toString() {
+        return this.ticker;
+    }
+
     exitPosition(time, price, info, reason) {
         this.data.currentPrice = price;
         this.data.exitReason = reason;
