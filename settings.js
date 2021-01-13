@@ -11,6 +11,8 @@ if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
 stocks = "test";
 strategy = "test";
 
+stocks = "watch";
+
 if (process.argv[2] == "-cli") {
     if (process.argv[3] !== undefined) {
         stocks = process.argv[3];
@@ -19,10 +21,7 @@ if (process.argv[2] == "-cli") {
         }
     }
 }
-
-stocks = "watch";
 // stocks = "june2020undervalued";
-
 // stocks = "bear";
 settings = {   
     stockFile: stocks,
