@@ -265,38 +265,40 @@ async function main(repeating) {
     await trader.addStrategyByName(settings.strategy);
     stocks = await tickers.fetch(settings.stockFile)
 
-    logger.setup("Adding " + stocks.length + " stocks")
-    
-    alpaca.getAccount().then((account, err) => {
-        if (!account) {
-            console.log(chalk.red("eurgh"));
-            console.log(account);
-            console.log(err);
-        }
+    // Check if the market is open now.
+    alpaca.getClock().then((clock) => {
+        if (clock.is_open) {
+            logger.setup("Adding " + stocks.length + " stocks")
+            alpaca.getAccount().then((account, err) => {
+                if (!account) {
+                    console.log(chalk.red("eurgh"));
+                    console.log(account);
+                    console.log(err);
+                }
 
-        alpaca.getPositions().then(positions => {
-            alpaca.getBars(
-                settings.alpacaRange,
-                stocks
-            ).then(response => {
-                gotBars(response, true);  
-                portfolio.updateFromAlpaca(account, positions);
-                trader.portfolio.logStatus(); 
-            }).catch(e => 
-                logger.error([
-                    "ERROR",
-                    "Failed to get market data from alpaca",
-                    e.error,
-                    e.message
-                ]) 
-            );
-        });
-          
-        
+                alpaca.getPositions().then(positions => {
+                    alpaca.getBars(
+                        settings.alpacaRange,
+                        stocks
+                    ).then(response => {
+                        gotBars(response, true);  
+                        portfolio.updateFromAlpaca(account, positions);
+                        trader.portfolio.logStatus(); 
+                    }).catch(e => 
+                        logger.error([
+                            "ERROR",
+                            "Failed to get market data from alpaca",
+                            e.error,
+                            e.message
+                        ]) 
+                    );
+                });     
+            });
+        } else {
+            logger.error("Market is closed");
+        }
     });
 }
-
-
 
 getStock = function(stock) {
     return alpaca.getPosition(stock);
