@@ -7,7 +7,7 @@ module.exports = {
     limitOrder: 2.20, // no acceptable limit order
     stopLoss: -200, // it'll never stop loss
     acceptableLoss: 0, // there is no acceptable loss
-    maxTradesOpen: 100, // each stock should be able to have some form of opening
+    maxTradesOpen: 40, //100, // each stock should be able to have some form of opening
     maxOpenPerTicker: 30000000,
     maxHolding: 0.2, // max holding 20% of the portfolio
     buySignalCashWeighting: 50,
