@@ -275,23 +275,24 @@ async function main(repeating) {
         }
 
         alpaca.getPositions().then(positions => {
-            portfolio.updateFromAlpaca(account, positions);
-            trader.portfolio.logStatus();
+            alpaca.getBars(
+                settings.alpacaRange,
+                stocks
+            ).then(response => {
+                gotBars(response, true);  
+                portfolio.updateFromAlpaca(account, positions);
+                trader.portfolio.logStatus(); 
+            }).catch(e => 
+                logger.error([
+                    "ERROR",
+                    "Failed to get market data from alpaca",
+                    e.error,
+                    e.message
+                ]) 
+            );
         });
           
-        alpaca.getBars(
-            settings.alpacaRange,
-            stocks
-        ).then(response => {
-            gotBars(response, true);   
-        }).catch(e => 
-            logger.error([
-                "ERROR",
-                "Failed to get market data from alpaca",
-                e.error,
-                e.message
-            ]) 
-        );
+        
     });
 }
 

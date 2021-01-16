@@ -7,7 +7,11 @@ const moment = require('moment');
 const tickers = require('./tickers');
 const logger = require('./logger');
 
+const Alpaca = require('@alpacahq/alpaca-trade-api')
 
+const alpaca = new Alpaca({
+    usePolygon: false
+});
 
 chalk.colorize = function(val, base, str) {
     if (val * 1 > base * 1) {
@@ -190,6 +194,38 @@ portfolio.updateFromAlpaca = function(account, holdings) {
             this.holdings[holding.symbol] = []
         }
         this.holdings[holding.symbol].push(trade);
+
+        // if no longer in watchlist
+        if (!tickers.isWatched(holding.symbol)) {
+            // attempt to sell holding
+
+
+            alpaca.getBars(
+                settings.alpacaRange,
+                holding.symbol
+            ).then(response => {
+                for (var i in response) {
+                    var data = response[i];
+                    portfolio.closeAll(i, {
+                        time: (new Date()).getTime(),
+                        price: data[data.length - 1].closePrice,
+                        info: "",
+                        reason: "No longer watched"
+                    });
+                }
+                // var symbol = response.keys()[0]; 
+                // console.log(response);
+                
+            }).catch(e => 
+                logger.error([
+                    "ERROR",
+                    "Failed to get market data from alpaca",
+                    e.error,
+                    e.message
+                ]) 
+            );
+            
+        }
     }
 
     // this.holdings = holdings;
@@ -277,6 +313,7 @@ portfolio.closeAll = function(stock, details) {
     var didNotSellAtALoss = false;
     for ( var i = 0; i < this.holdings[stock].length; i++) {
         var trade = this.holdings[stock][i];
+        
         var total = details.price * trade.quantity;
         // never sell at a loss
         var acceptableLoss = 0;

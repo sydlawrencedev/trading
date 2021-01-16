@@ -3,15 +3,20 @@ var fs = require('fs');
 
 var tickers = {
     active: [],
+    keyval: {},
     activeFile: "",
     refetch: function() {
         return this.fetch(this.activeFile);
     },
     addTicker: function(ticker) {
         if (ticker && ticker[0] !== ".") {
-            tricker = ticker.trim()
-            this.active.push(ticker.trim());
+            ticker = ticker.trim()
+            this.keyval[ticker] = ticker;
+            this.active.push(ticker);
         }
+    },
+    isWatched: function(ticker) {
+        return (this.keyval[ticker] !== undefined);
     },
     fetch: async function(csv, cb) {
         this.activeFile = csv;
