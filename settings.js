@@ -11,7 +11,7 @@ if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
 stocks = "test";
 strategy = "test";
 
-stocks = "watch";
+// stocks = "watch";
 
 if (process.argv[2] == "-cli") {
     if (process.argv[3] !== undefined) {

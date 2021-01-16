@@ -49,6 +49,7 @@ portfolio.logProfits = async function(time = settings.timeWindow.start) {
             chalk.colorize(profits[i],hodl[i] * 1,"HODL: " + (hodl[i] * 100).toFixed(2)+"%"),
             "Out: $"+Math.round(this.spendings[i]),
             "In: $"+Math.round(this.takings[i]),
+            "Diff: $"+Math.round(this.takings[i] - this.spendings[i]),
 
         ]);
     }
@@ -218,6 +219,14 @@ portfolio.openTrade = function(stock, time, price, info) {
         ], moment(time));
         return;
     }
+    if (price <= 0) {
+        logger.error([
+            "BUY ",
+            stock,
+            "Price cannot be less than 0"
+        ], moment(time))
+        return;
+    }
     var quantity = cashToSpend / price;
     if (!settings.supportPartialShares) {
         quantity = Math.floor(quantity);
@@ -241,6 +250,7 @@ portfolio.openTrade = function(stock, time, price, info) {
         this.spendings[stock] = 0;
     }
     this.spendings[stock] += cashToSpend;
+    console.log("Buy " + cashToSpend + " " + this.spendings[stock]);
 
     logger.alert([
         chalk.green("BUY "),
@@ -280,7 +290,11 @@ portfolio.closeAll = function(stock, details) {
             if (this.takings[stock] == undefined) {
                 this.takings[stock] = 0;
             }
+
+            // if (details.force) {
+            // }
             this.takings[stock] += total;
+            console.log("Sold " + total + " " + this.takings[stock]);
             
             logger.alert([
                 chalk.green("SELL"),
