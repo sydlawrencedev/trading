@@ -31,6 +31,12 @@
     "terminal-image": "^1.2.1"
   },
   "nodemonConfig": {
-    "ignore": ["data", "logs", "cache", "strategies", "stocks"]
-}
+    "ignore": [
+      "data",
+      "logs",
+      "cache",
+      "strategies",
+      "stocks"
+    ]
+  }
 }
