@@ -178,7 +178,7 @@ portfolio.calculate = function() {
     this.portfolioValue = this.portfolioValue.toFixed(2);
 }
 
-portfolio.updateFromAlpaca = function(account, holdings) {
+portfolio.updateFromAlpaca = function(account, holdings, checkIfWatched = false) {
     this.liveFromAlpaca = true;
     this.cash = account.cash * 1;
     this.portfolioValue = account.portfolio_value * 1;
@@ -196,10 +196,8 @@ portfolio.updateFromAlpaca = function(account, holdings) {
         this.holdings[holding.symbol].push(trade);
 
         // if no longer in watchlist
-        if (!tickers.isWatched(holding.symbol)) {
+        if (checkIfWatched && !tickers.isWatched(holding.symbol)) {
             // attempt to sell holding
-
-
             alpaca.getBars(
                 settings.alpacaRange,
                 holding.symbol

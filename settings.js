@@ -8,7 +8,7 @@ if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
     console.log(chalk.green("Running in verbose mode"));
 }
 
-stocks = "test";
+stocks = "autodd";
 strategy = "test";
 
 // stocks = "watch";

@@ -282,7 +282,7 @@ async function main(repeating) {
                         stocks
                     ).then(response => {
                         gotBars(response, true);  
-                        portfolio.updateFromAlpaca(account, positions);
+                        portfolio.updateFromAlpaca(account, positions, true);
                         trader.portfolio.logStatus(); 
                     }).catch(e => 
                         logger.error([
