@@ -228,8 +228,8 @@ trader.performTrades = function(combinedStockData, combinedTrades) {
 
 trader.getSingleHodl = async function(ticker, startTime = settings.timeWindow.start) {
     
-
-    var cacheKey = "hodl_"+ticker+"_"+startTime;
+    var cachebust = 4;
+    var cacheKey = "hodl_"+ticker+"_"+startTime+"_"+cachebust;
 
     var hodl = myCache.getSync(cacheKey); //{ color: 'red' }
 
