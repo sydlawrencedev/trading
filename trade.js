@@ -126,7 +126,7 @@ gotBars = function(bars, moreToTry) {
         logger.status("Latest data: " + moment(df.last().time).format("DD/MM/YYYY HH:mm"));
         logger.status(trades.length + " potential trades found")
 
-        
+        // go through all sell trades
         for (var i = 0; i < trades.length; i++) {
             var trade = trades[i];
 
@@ -199,8 +199,13 @@ gotBars = function(bars, moreToTry) {
                     }
                 }
             }
+        }
 
-            else if (trade.buySignal > trade.sellSignal) {
+        // go through all buy trades
+        for (var i = 0; i < trades.length; i++) {
+            var trade = trades[i];
+
+            if (trade.buySignal > trade.sellSignal) {
                 try {
                     requiresActivty = true;
                     var account = await alpaca.getAccount();
@@ -232,6 +237,8 @@ gotBars = function(bars, moreToTry) {
                 }
                 
             }
+
+            
         }
 
         var account = await alpaca.getAccount();
