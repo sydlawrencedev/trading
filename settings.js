@@ -40,8 +40,8 @@ settings = {
     interval: false, // 1min, 5min, 15min, 30min, 60min, false if daily
     tradingStart: "2021-01-04 00:00:00", 
     timeWindow: {
-        start: "2020-01-01 00:00:00",
-        start: "2020-10-01 00:00:00",
+        start: "2021-01-04 00:00:00", 
+        // start: "2020-10-01 00:00:00",
         end: "2020-12-30 00:00:00",
         // start: false // use all available data
     },
