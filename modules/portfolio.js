@@ -205,7 +205,6 @@ portfolio.updateFromAlpaca = function(account, holdings, checkIfWatched = false)
                 ).then(response => {
                     for (var i in response) {
                         var data = response[i];
-                        portfolio.sellStock(holding.symbol, holding.qty)
                         portfolio.closeAll(i, {
                             time: (new Date()).getTime(),
                             price: data[data.length - 1].closePrice,
@@ -345,6 +344,8 @@ portfolio.closeAll = function(stock, details, trade = false) {
         }
 
         if (acceptableLoss <= details.price || details.force == true) {
+            portfolio.sellStock(stock, trade.quantity);
+
             trade.exitPosition(details.time, details.price, details.info, details.reason);
             if (this.takings[stock] == undefined) {
                 this.takings[stock] = 0;

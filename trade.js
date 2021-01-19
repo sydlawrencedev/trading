@@ -115,8 +115,6 @@ gotBars = function(bars, moreToTry) {
 
         var timeOfLastTrade = await trader.getLastTradeTime();
 
-
-
         trader.portfolio.holdings = {};
 
         var attemptedTrades = {};
@@ -159,19 +157,14 @@ gotBars = function(bars, moreToTry) {
 
                         attemptedTrades[trade.ticker] = true;
                         var sellResponse = await sellStock(trade.ticker, position.qty);
+                        await portfolio.closeAll(trade.ticker, {
+                            time: (new Date()).getTime(),
+                            price: position.current_price,
+                            info: trade.sellSignal,
+                            reason: trade.sellReason
+                        }, trade);
 
-                        logger.alert([
-                            chalk.green("SELL"),
-                            trade.ticker,
-                            chalk.colorize(
-                                position.market_value*1,
-                                position.cost_basis*1,
-                                (position.market_value - position.cost_basis).toFixed(2) + " ("+(position.unrealized_plpc * 100).toFixed(1)+"%)"
-                            ),
-                            Math.round(position.current_price)+"", Math.round(position.market_value)+"  ",
-                            trade.sellSignal,
-                            trade.sellReason
-                        ]); 
+                        
 
                         var account = await alpaca.getAccount();
                         var positions = await alpaca.getPositions();
