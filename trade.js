@@ -288,8 +288,8 @@ async function main(repeating) {
                         settings.alpacaRange,
                         stocks
                     ).then(response => {
-                        gotBars(response, true);  
                         portfolio.updateFromAlpaca(account, positions, true);
+                        gotBars(response, true);  
                         trader.portfolio.logStatus(); 
                     }).catch(e => 
                         logger.error([

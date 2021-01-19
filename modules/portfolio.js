@@ -223,6 +223,8 @@ portfolio.updateFromAlpaca = function(account, holdings, checkIfWatched = false)
                 ]) 
             );
             
+        } else {
+            console.log(!tickers.isWatched(holding.symbol));
         }
     }
 
