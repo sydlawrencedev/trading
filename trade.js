@@ -316,6 +316,8 @@ sellStock = function(stock, qty) {
     return orderStock("sell", stock, qty);
 }
 
+portfolio.sellStock = sellStock;
+
 buyStock = function(stock, qty, currentPrice) {
     if (qty < 1) { return; }
     return orderStock("buy", stock, qty, currentPrice);

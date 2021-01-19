@@ -184,48 +184,51 @@ portfolio.updateFromAlpaca = function(account, holdings, checkIfWatched = false)
     this.portfolioValue = account.portfolio_value * 1;
 
 
-    for (var i = 0; i < holdings.length; i++) {
-        var holding = holdings[i];
-        var trade = new Trade(
-            (new Date()).getTime(), holding.symbol, holding.qty, holding.avg_entry_price, holding
-        );
-        
-        if (this.holdings[holding.symbol] == undefined) {
-            this.holdings[holding.symbol] = []
-        }
-        this.holdings[holding.symbol].push(trade);
-
-        // if no longer in watchlist
-        if (checkIfWatched && !tickers.isWatched(holding.symbol)) {
-            // attempt to sell holding
-            alpaca.getBars(
-                settings.alpacaRange,
-                holding.symbol
-            ).then(response => {
-                for (var i in response) {
-                    var data = response[i];
-                    portfolio.closeAll(i, {
-                        time: (new Date()).getTime(),
-                        price: data[data.length - 1].closePrice,
-                        info: "",
-                        reason: "No longer watched"
-                    });
-                }
-                // var symbol = response.keys()[0]; 
-                // console.log(response);
-                
-            }).catch(e => 
-                logger.error([
-                    "ERROR",
-                    "Failed to get market data from alpaca",
-                    e.error,
-                    e.message
-                ]) 
+    for (var index = 0; index < holdings.length; index++) {
+        (function(i) {
+            var holding = holdings[i];
+            var trade = new Trade(
+                (new Date()).getTime(), holding.symbol, holding.qty, holding.avg_entry_price, holding
             );
             
-        } else {
-            console.log(!tickers.isWatched(holding.symbol));
-        }
+            if (portfolio.holdings[holding.symbol] == undefined) {
+                portfolio.holdings[holding.symbol] = []
+            }
+            portfolio.holdings[holding.symbol].push(trade);
+            
+            // if no longer in watchlist
+            if (checkIfWatched && !tickers.isWatched(holding.symbol)) {
+                // attempt to sell holding
+                alpaca.getBars(
+                    settings.alpacaRange,
+                    holding.symbol
+                ).then(response => {
+                    for (var i in response) {
+                        var data = response[i];
+                        portfolio.sellStock(holding.symbol, holding.qty)
+                        portfolio.closeAll(i, {
+                            time: (new Date()).getTime(),
+                            price: data[data.length - 1].closePrice,
+                            info: "",
+                            trade: trade,
+                            reason: "No longer watched"
+                        }, trade);
+                    }
+                    // var symbol = response.keys()[0]; 
+                    // console.log(response);
+                    
+                }).catch(e => 
+                    logger.error([
+                        "ERROR",
+                        "Failed to get market data from alpaca",
+                        e.error,
+                        e.message
+                    ]) 
+                );
+                
+            }
+        })(index)
+        
     }
 
     // this.holdings = holdings;
@@ -286,7 +289,6 @@ portfolio.openTrade = function(stock, time, price, info) {
         this.spendings[stock] = 0;
     }
     this.spendings[stock] += cashToSpend;
-    console.log("Buy " + cashToSpend + " " + this.spendings[stock]);
 
     logger.alert([
         chalk.green("BUY "),
@@ -306,13 +308,33 @@ portfolio.openTrade = function(stock, time, price, info) {
     this.holdings[stock].push(trade);
 }
 
-portfolio.closeAll = function(stock, details) {
-    if (this.holdings[stock] == undefined) {
-        this.holdings[stock] = [];
+portfolio.closeAll = function(stock, details, trade = false) {
+    if (portfolio.holdings[stock] == undefined) {
+        portfolio.holdings[stock] = [];
     }
+    if (trade) {
+        portfolio.holdings[stock] = [trade];
+    }
+
+    if (portfolio.holdings[stock].length == 0) {
+        logger.error([
+            "SELL",
+            stock,
+            "No holding found?",
+            details.reason
+        ], moment(details.time));
+    }
+
+    // console.log("wat now", stock);
+    // console.log(portfolio.holdings[stock]);
+    // console.log(holdings);
+    // console.log("hide");
     var didNotSellAtALoss = false;
-    for ( var i = 0; i < this.holdings[stock].length; i++) {
-        var trade = this.holdings[stock][i];
+    // console.log(details);
+    // console.log("wat",stock, portfolio.holdings[stock].length);
+    
+    for ( var i = 0; i < portfolio.holdings[stock].length; i++) {
+        var trade = portfolio.holdings[stock][i];
         
         var total = details.price * trade.quantity;
         // never sell at a loss
@@ -331,7 +353,6 @@ portfolio.closeAll = function(stock, details) {
             // if (details.force) {
             // }
             this.takings[stock] += total;
-            console.log("Sold " + total + " " + this.takings[stock]);
             
             logger.alert([
                 chalk.green("SELL"),
