@@ -173,7 +173,7 @@ gotBars = function(bars, moreToTry) {
                 } catch (e) {
                     if (e.error !== undefined && e.error.code == 40410000) {
                         // simply position doesn't currently exist
-                    } else {
+                    } else if (e.error !== undefined) {
                         logger.warn([
                             "SELL",
                             trade.ticker,
@@ -189,6 +189,8 @@ gotBars = function(bars, moreToTry) {
                             trade.sellReason
                         ]);
                         
+                    } else {
+                        console.log(e);
                     }
                 }
             }
