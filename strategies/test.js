@@ -53,7 +53,11 @@ module.exports = {
         }
 
         var amount = perTrade * Math.max((info.buySignal / this.buySignalCashWeighting),1.5)
-        
+
+        var currentValue = portfolio.currentValue();
+        if (amount > this.maxHolding * currentValue) {
+            amount = this.maxHolding * currentValue
+        }
         return Math.max(0,Math.min(amount, totalCash));
     },
     buySignal: indicators => {
