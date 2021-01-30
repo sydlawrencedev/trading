@@ -275,7 +275,9 @@ trader.getSingleHodl = async function(ticker, startTime = settings.timeWindow.st
 trader.portfolio.getHODL = trader.getHODL = async function(stocks, startTime = settings.timeWindow.start, end= settings.timeWindow.end) {
     var hodl = {};
     for (var i = 0; i < stocks.length; i++) {
-        hodl[stocks[i]] = await trader.getSingleHodl(stocks[i], startTime, end);
+        try {
+            hodl[stocks[i]] = await trader.getSingleHodl(stocks[i], startTime, end);
+        } catch (e) {}
     }
     return hodl;
 }

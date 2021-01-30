@@ -1,3 +1,9 @@
+
+
+const CoinAPI = require('coinapi-io');
+const subHours = require('date-fns').subHours;
+
+
 const settings = require('../settings');
 const axios = require('axios');
 const fs = require('fs');
@@ -31,14 +37,26 @@ var  MarketData = {
                 dataFunction = "TIME_SERIES_DAILY"
         }
         var df;
+        var crypto = false;
+        if (stockTicker.indexOf("CRYPTO_") > -1) {
+            crypto = true;
+        }
+
         var url = "https://www.alphavantage.co/query?function="+dataFunction+"&symbol="+stockTicker+"&outputsize=full&datatype=csv&apikey="+settings.alphavantagekey;
+        
         if (interval) {
             url += "&interval="+interval;
+        }
+        var responseType = "stream";
+        if (crypto) {
+            responseType = "json"
+            ticker = stockTicker.replace("CRYPTO_","");
+            url = 'https://min-api.cryptocompare.com/data/histoday?aggregate=1&e=CCCAGG&extraParams=CryptoCompare&fsym='+ ticker.toUpperCase() +'&limit=2000&tryConversion=false&tsym=USD';
         }
         var response = await axios({
             method: "get",
             url: url,
-            responseType: "stream"
+            responseType: responseType
         });
         if (response.status == 200) {
             logger.success([stockTicker,"Downloaded historical stock data"]);
@@ -53,7 +71,31 @@ var  MarketData = {
                 case "minute":
                     dateFormat = "YYYY-MM-DD HH:mm:ss";
             }
-            var s = await response.data.pipe(fs.createWriteStream(filename));
+            if (crypto) {
+                var headers = "timestamp,open,high,low,close,volume\n";
+                await fs.appendFileSync(filename, headers);
+
+                var rows = [];
+                for (var i  = 0; i < response.data.Data.length; i++) {
+                    var row = response.data.Data[i];
+                    rows.push([
+                        moment(row.time*1000).format(dateFormat),
+                        row.open,
+                        row.high,
+                        row.low,
+                        row.close,
+                        row.volumefrom
+                    ].join(","));
+                }
+                rows = rows.reverse();
+
+                for (var i  = 0; i < rows.length; i++) {
+                    await fs.appendFileSync(filename, rows[i]+"\n");
+                }
+
+            } else {
+                await response.data.pipe(fs.createWriteStream(filename));
+            }
             await sleep(10000);
             var single = await this.getHistoricSingle(stockTicker,timeframe,interval);
             return single;

@@ -32,7 +32,8 @@ settings = {
     comparisons: ["h3ka"],
     alphavantagekey: keys.alphavantage.key,
     alpaca: keys.alpaca,
-    supportPartialShares: false,
+    coinApiKey: keys.coinAPI.key,
+    supportPartialShares: true,
     startingCapital: 100000,
     verbose: verbose,
     tradingTimeout: 1 * 60 * 1000,
@@ -41,11 +42,11 @@ settings = {
     tradingStart: "2021-01-04 00:00:00", 
     timeWindow: {
         start: "2021-01-04 00:00:00", 
-        start: "2020-01-01 00:00:00",
-        end: "2020-12-30 00:00:00",
+        start: "2018-01-01 00:00:00",
+        end: "2021-01-30 00:00:00",
 
-        start: "2017-12-01 00:00:00",
-        end: "2020-03-16 00:00:00",
+        // start: "2017-12-01 00:00:00",
+        // end: "2020-03-16 00:00:00",
         // start: false // use all available data
     },
     thresholds: {
