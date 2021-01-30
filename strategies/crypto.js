@@ -6,10 +6,10 @@ module.exports = {
     name: "H3ka c.1",
     limitOrder: 2.20, // no acceptable limit order
     stopLoss: -200, // it'll never stop loss
-    acceptableLoss: -0.1, // there is no acceptable loss
+    acceptableLoss: -0.1, // there is only a slight acceptable loss
     maxTradesOpen: 1, //100, // each stock should be able to have some form of opening
     maxOpenPerTicker: 30000000,
-    maxHolding: 0.9, // max holding 20% of the portfolio
+    maxHolding: 0.9, // max holding 90% of the portfolio
     buySignalCashWeighting: 50,
     secondPurchaseStockWeighting: 0.2,
     firstPurchaseStockWeighting: 0.1,
