@@ -226,10 +226,10 @@ trader.performTrades = function(combinedStockData, combinedTrades) {
     }
 }
 
-trader.getSingleHodl = async function(ticker, startTime = settings.timeWindow.start) {
+trader.getSingleHodl = async function(ticker, startTime = settings.timeWindow.start, endTime = settings.timeWindow.end) {
     
     var cachebust = 4;
-    var cacheKey = "hodl_"+ticker+"_"+startTime+"_"+cachebust;
+    var cacheKey = "hodl_"+ticker+"_"+startTime+"_"+endTime+"_"+cachebust;
 
     var hodl = myCache.getSync(cacheKey); //{ color: 'red' }
 
@@ -272,10 +272,10 @@ trader.getSingleHodl = async function(ticker, startTime = settings.timeWindow.st
     return resp;
 }
 
-trader.portfolio.getHODL = trader.getHODL = async function(stocks, startTime = settings.timeWindow.start) {
+trader.portfolio.getHODL = trader.getHODL = async function(stocks, startTime = settings.timeWindow.start, end= settings.timeWindow.end) {
     var hodl = {};
     for (var i = 0; i < stocks.length; i++) {
-        hodl[stocks[i]] = await trader.getSingleHodl(stocks[i], startTime);
+        hodl[stocks[i]] = await trader.getSingleHodl(stocks[i], startTime, end);
     }
     return hodl;
 }

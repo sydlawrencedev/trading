@@ -9,9 +9,11 @@ const logger = require('./logger');
 
 const Alpaca = require('@alpacahq/alpaca-trade-api')
 
-const alpaca = new Alpaca({
-    usePolygon: false
-});
+try {
+    const alpaca = new Alpaca({
+        usePolygon: false
+    });
+} catch (e) {}
 
 chalk.colorize = function(val, base, str) {
     if (val * 1 > base * 1) {
@@ -40,10 +42,10 @@ var portfolio = {
     portfolioValue: startingCash
 }
 
-portfolio.logProfits = async function(time = settings.timeWindow.start) {
+portfolio.logProfits = async function(time = settings.timeWindow.start, end = settings.timeWindow.start) {
     this.calculate();
     var profits = this.getProfits();
-    var hodl = await this.getHODL(Object.keys(profits), time);
+    var hodl = await this.getHODL(Object.keys(profits), time, end);
     for (var i in profits) {
         logger.log([
             "STOCK",
@@ -344,8 +346,9 @@ portfolio.closeAll = function(stock, details, trade = false) {
         }
 
         if (acceptableLoss <= details.price || details.force == true) {
-            portfolio.sellStock(stock, trade.quantity);
-
+            if (portfolio.sellStock !== undefined) {
+                portfolio.sellStock(stock, trade.quantity);
+            }
             trade.exitPosition(details.time, details.price, details.info, details.reason);
             if (this.takings[stock] == undefined) {
                 this.takings[stock] = 0;
