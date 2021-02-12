@@ -18,6 +18,7 @@
   "homepage": "https://github.com/ashleydavis/grademark-first-example#readme",
   "dependencies": {
     "@alpacahq/alpaca-trade-api": "^1.4.2",
+    "@data-forge-plot/render": "0.0.4",
     "@plotex/render-image": "^1.0.4",
     "axios": "^0.21.1",
     "chalk": "^4.1.0",
@@ -25,12 +26,15 @@
     "data-forge": "^1.8.11",
     "data-forge-fs": "^0.0.8",
     "data-forge-indicators": "^0.2.5",
+    "data-forge-plot": "^0.6.3",
     "date-fns": "^2.16.1",
     "easy-table": "^1.1.1",
     "express": "^4.17.1",
+    "ftx-api-rest": "0.0.6",
     "grademark": "^0.2.8",
     "persistent-cache": "^1.1.1",
     "plot": "^1.0.6",
+    "rimraf": "^3.0.2",
     "terminal-image": "^1.2.1"
   },
   "nodemonConfig": {

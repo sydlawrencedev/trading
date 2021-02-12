@@ -11,8 +11,10 @@ var tickers = {
     addTicker: function(ticker) {
         if (ticker && ticker[0] !== ".") {
             ticker = ticker.trim()
+            ticker = ticker.replace("CRYPTO_","");
             this.keyval[ticker] = ticker;
             this.active.push(ticker);
+
         }
     },
     isWatched: function(ticker) {

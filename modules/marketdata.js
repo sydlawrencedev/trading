@@ -22,7 +22,7 @@ function sleep(ms) {
 var  MarketData = {
 
     filename: function(ticker, timeframe, interval, mode = "test") {
-        return ticker+"_"+timeframe+"_"+interval+"_"+mode;
+        return ticker.replace("/","-")+"_"+timeframe+"_"+interval+"_"+mode;
     },
 
     fetchHistoricSingle: async function(stockTicker, timeframe = "daily", interval = false) {
@@ -37,20 +37,15 @@ var  MarketData = {
                 dataFunction = "TIME_SERIES_DAILY"
         }
         var df;
-        var crypto = false;
-        if (stockTicker.indexOf("CRYPTO_") > -1) {
-            crypto = true;
-        }
-
         var url = "https://www.alphavantage.co/query?function="+dataFunction+"&symbol="+stockTicker+"&outputsize=full&datatype=csv&apikey="+settings.alphavantagekey;
         
         if (interval) {
             url += "&interval="+interval;
         }
         var responseType = "stream";
-        if (crypto) {
+        if (settings.isCrypto) {
             responseType = "json"
-            ticker = stockTicker.replace("CRYPTO_","");
+            ticker = stockTicker.replace("\/USD","");
             url = 'https://min-api.cryptocompare.com/data/histoday?aggregate=1&e=CCCAGG&extraParams=CryptoCompare&fsym='+ ticker.toUpperCase() +'&limit=2000&tryConversion=false&tsym=USD';
         }
         var response = await axios({
@@ -71,7 +66,7 @@ var  MarketData = {
                 case "minute":
                     dateFormat = "YYYY-MM-DD HH:mm:ss";
             }
-            if (crypto) {
+            if (settings.isCrypto) {
                 var headers = "timestamp,open,high,low,close,volume\n";
                 await fs.appendFileSync(filename, headers);
 

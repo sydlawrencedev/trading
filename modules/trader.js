@@ -22,6 +22,8 @@ const alpaca = new Alpaca({
 const dataForge = require('data-forge');
 require('data-forge-fs'); // For loading files.
 require('data-forge-indicators'); // For the moving average indicator.
+require('data-forge-plot'); // Extends Data-Forge with the 'plot' function.
+require('@data-forge-plot/render');
 
 var supportPartialShares = settings.supportPartialShares;
 
@@ -148,6 +150,11 @@ trader.determineTrades = async function(andThenPerformTrades = false) {
                 isHolding: holdings.deflate(row => row.isHolding)
             });
 
+            var directory = "./testing2";
+            var rimraf = require("rimraf");
+            rimraf.sync(directory);
+
+
             var tradesData = stockData.where(row => (row.buyIn || (row.isHolding && row.sellOut) || (row.isHolding && row.stopLoss) || (row.isHolding && row.limitOrder)));
             
             for (const trade of tradesData) {
@@ -171,7 +178,7 @@ trader.determineTrades = async function(andThenPerformTrades = false) {
         logger.setup("no possible trades?");
     }
 
-    // tradesData = tradesData.subset(["time", "buyIn", "isHolding", "sellOut", "open", "close"]);
+    tradesData = tradesData.subset(["time", "buyIn", "isHolding", "sellOut", "open", "close"]);
     combinedTrades = combinedTrades.sort((a,b) => { 
         if (a.time == b.time) 
             return (a.buySignal > b.buySignal) ? 1 : -1
@@ -180,6 +187,15 @@ trader.determineTrades = async function(andThenPerformTrades = false) {
     if (andThenPerformTrades) {
         this.performTrades(combinedStockData, combinedTrades);
     }
+
+
+    renderData = stockData.subset(["time", "close","fractal", "gatorJaw", "gatorTeeth", "gatorLips"]);
+
+    await renderData.plot({},{y: ["close", "gatorJaw", "gatorTeeth", "gatorLips"], y2: ["fractal"]}).renderImage("my-chart.png");
+
+    await renderData.plot({},{y: ["close", "gatorJaw", "gatorTeeth", "gatorLips"], y2: ["fractal"]}).exportWeb("./test-export", { openBrowser: true });
+
+
     return combinedTrades;
 }
 

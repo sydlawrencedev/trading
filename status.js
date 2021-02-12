@@ -39,19 +39,13 @@ chalk.colorize = function(val, base, str, isBG = true) {
 
 
 const settings = require('./settings');
-const Alpaca = require('@alpacahq/alpaca-trade-api')
 const dataForge = require('data-forge');
 require('data-forge-fs'); // For loading files.
 require('data-forge-indicators'); // For the moving average indicator.
 const { backtest, analyze, computeEquityCurve, computeDrawdown } = require('grademark');
 
-process.env.APCA_API_KEY_ID = settings.alpaca.key;
-process.env.APCA_API_SECRET_KEY = settings.alpaca.secret;
-process.env.APCA_API_BASE_URL = settings.alpaca.endpoint;
-
-const alpaca = new Alpaca({
-    usePolygon: false
-});
+const Broker = require('./modules/broker');
+var broker = new Broker();
 
 var startingCash = settings.startingCapital;
 var maxActiveHoldings = 20;
@@ -85,16 +79,15 @@ async function main(repeating) {
     stocks = await tickers.fetch(settings.stockFile)
 
     logger.setup("Adding " + stocks.length + " stocks")
-    
-    alpaca.getAccount().then((account, err) => {
+    broker.getAccount().then((account, err) => {
         if (!account) {
             console.log(chalk.red("eurgh"));
             console.log(account);
             console.log(err);
         }
 
-        alpaca.getPositions().then(async positions => {
-            await portfolio.updateFromAlpaca(account, positions);
+        broker.getPositions().then(async positions => {
+            await portfolio.updateFromBroker(account, positions);
             await trader.portfolio.logProfits(settings.tradingStart);
             await trader.portfolio.logHoldings(settings.tradingStart);
             await trader.portfolio.logStatus(settings.tradingStart);

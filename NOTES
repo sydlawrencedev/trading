@@ -11,3 +11,44 @@ https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=TSL
 
 
 https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=TSLA&outputsize=full&datatype=csv&apikey=0OV8QTDPW5IYCHSN
+
+
+Starting BTC: 0.00260165
+
+Risk analysis:
+https://www.youtube.com/watch?v=ofwtsc20hOY
+https://docs.google.com/presentation/d/1RVycvmHsa4tGYA_J78yoWRRTbjQykZ7E7hpouu32QAQ/edit#slide=id.g3bd3ee168b_0_125
+
+Each trade should have a:
+- target price
+- stop loss
+
+Stop loss = when your hypothesis is proven to be incorrect
+    with extrema, when it goes below the previous low
+    
+Risk = the stop loss
+
+METRICS REQUIRED:
+R = reward / risk
+Win rate = win trades % total trades * 100
+
+
+IG for API: https://referme.to/xWFGJw
+
+Compare against DCA not HODL
+
+Different strategies for black swans
+
+monte carlo simulations
+
+Bill Williams Fractal Strategy
+
+Fractal Aligator System
+
+vwap, bollinger bands
+
+2000 bubble - AMZN
+2015
+
+200
+2008

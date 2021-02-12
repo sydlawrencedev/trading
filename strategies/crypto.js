@@ -5,14 +5,14 @@ module.exports = {
     description: "H3ka c.1",
     name: "H3ka c.1",
     limitOrder: 2.20, // no acceptable limit order
-    stopLoss: -200, // it'll never stop loss
-    acceptableLoss: -0.1, // there is only a slight acceptable loss
+    stopLoss: -0.1, // 10% stop loss
+    acceptableLoss: 0, // ignore this option
     maxTradesOpen: 1, //100, // each stock should be able to have some form of opening
     maxOpenPerTicker: 30000000,
-    maxHolding: 0.9, // max holding 90% of the portfolio
+    maxHolding: 1, // max holding 90% of the portfolio
     buySignalCashWeighting: 50,
-    secondPurchaseStockWeighting: 0.5,
-    firstPurchaseStockWeighting: 0.1,
+    secondPurchaseStockWeighting: 1,
+    firstPurchaseStockWeighting: 0.5,
     maxBuyMoreProfit: 0.50,
     maxBuyMoreLoss: -0.2,
     amountToSpend: function(info, totalCash, openTrades = [], openTradesSameTicker = [], allHoldings = {}, portfolio) {
@@ -21,19 +21,13 @@ module.exports = {
         var tradedBefore = openTradesSameTicker.length > 0;
         var totalHolding = 0;
         for (var i = 0; i < openTradesSameTicker.length; i++) {
-            totalHolding += openTradesSameTicker[i].currentValue({close: info.close});
-            
-            if (openTradesSameTicker[i].data.profit < this.maxBuyMoreLoss) {
-                throw new Error("Already at a loss with "+info.ticker+" ("+Math.round(openTradesSameTicker[i].data.profit)+")");
+            if (openTradesSameTicker[i].currentValue !== undefined) {
+                totalHolding += openTradesSameTicker[i].currentValue({close: info.close});
             }
-            if (openTradesSameTicker[i].data.profit > this.maxBuyMoreProfit ) {
-               throw new Error("Already got too much profit in this one: "+info.ticker+" ("+Math.round(openTradesSameTicker[i].data.profit)+")");
-           }
-
         }
         var currentValue = portfolio.currentValue();
         if (totalHolding > currentValue * this.maxHolding) {
-            throw new Error("Already holding " + Math.round(totalHolding / currentValue) + "% "+info.ticker);
+            throw new Error("Already holding " + Math.round(totalHolding / currentValue) * 100 + "% "+info.ticker);
         }
         if (openTradesSameTicker.length >= this.maxOpenPerTicker) {
             throw new Error("Already at max "+info.ticker+ " x"+this.maxOpenPerTicker+"");
@@ -76,7 +70,7 @@ module.exports = {
         ) {
             return {
                 reason: ["extrema: " + indicators.extrema, "direction: " + indicators.direction].join("\t"),
-                signal: 50
+                signal: 200
             }
         }
 
@@ -131,22 +125,22 @@ module.exports = {
         }
         
         // if volume is < 0.5 times the previous sma volume
-        if (indicators.direction < 0 && (indicators.volume * 2 < indicators.smaVolume)) {
+        if (indicators.direction < 0 && (indicators.volume * 4 < indicators.smaVolume)) {
             return {
-                reason: "highpreviousvolume: " + indicators.volume + " * 2 < " + indicators.smaVolume,
+                reason: "direction: " + indicators.direction + ", highpreviousvolume: " + indicators.volume + " * 4 < " + indicators.smaVolume,
                 signal: 10000
             }
         }
 
-        if (
-            indicators.upTrendCounter >= 7
-            && indicators.momentum > 0.07
-        ) {
-            return {
-                reason: ["momentum: " + indicators.momentum.toFixed(3), "upTrendCounter: " + indicators.upTrendCounter, "direction: " + indicators.direction, "longTermDirection: " + indicators.longTermDirection].join("\t"),
-                signal: 50
-            }
-        }
+        // if (
+        //     indicators.upTrendCounter >= 7
+        //     && indicators.momentum > 0.07
+        // ) {
+        //     return {
+        //         reason: ["momentum: " + indicators.momentum.toFixed(3), "upTrendCounter: " + indicators.upTrendCounter, "direction: " + indicators.direction, "longTermDirection: " + indicators.longTermDirection].join("\t"),
+        //         signal: 50
+        //     }
+        // }
         
         if (
             indicators.longTermDirection > 0
@@ -191,12 +185,56 @@ module.exports = {
         const smaVolume = inputSeries.deflate(row => row.volume).sma(2);
         const extrema = inputSeries.deflate(row => row.close).extrema();
         const momentum = inputSeries.deflate(row => row.close).momentum(3);
+        inputSeries = inputSeries.withSeries({
+            extrema: extrema
+        });
+        const fractal = inputSeries.deflate((row) => {
+            switch (row.extrema) {
+                case 1:
+                    return 1;
+                case -1:
+                    return -1;
+                default:
+                    return 0;
+            }
+            return 0;
+        });
+        inputSeries = inputSeries.withSeries({
+            fractal: fractal
+        });
+        const medianPrice = inputSeries.deflate(row => (row.high + row.low) / 2);
+        inputSeries = inputSeries.withSeries({
+            medianPrice: medianPrice
+        });
+        var gatorJaw = inputSeries.deflate(row => row.medianPrice).sma(13);
+        var gatorTeeth = inputSeries.deflate(row => row.medianPrice).sma(8);
+        var gatorLips = inputSeries.deflate(row => row.medianPrice).sma(5);
+        inputSeries = inputSeries.withSeries({
+            gatorJaw: gatorJaw,
+            gatorTeeth: gatorTeeth,
+            gatorLips: gatorLips,
+        });
+        // gatorJaw = inputSeries.deflate((row,index) => {
+        //     return row.gatorJaw;
+        // });
+        gatorTeeth = inputSeries.deflate((row,index) => {
+            return row.gatorJaw;
+        });
+        gatorLips = inputSeries.deflate((row,index) => {
+            if (index <= 2) return row.gatorJaw;
+            return inputSeries.skip(index-2).first().gatorJaw;
+        });
         
         inputSeries = inputSeries.withSeries({
             direction: direction,
             longTermDirection: longTermDirection,
             upTrendCounter: upTrendCounter,
             downTrendCounter: downTrendCounter,
+            gatorJaw: gatorJaw,
+            gatorTeeth: gatorTeeth,
+            gatorLips: gatorLips,
+            fractal: fractal,
+
             // longSma: longSma,
             // shortSma: shortSma,
             // tinySma: tinySma,
@@ -204,6 +242,7 @@ module.exports = {
             smaVolume: smaVolume,
             extrema: extrema,
             momentum: momentum,
+            medianPrice: medianPrice
         }); 
 
         // not currently using it

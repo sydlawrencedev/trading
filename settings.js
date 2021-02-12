@@ -8,8 +8,8 @@ if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
     console.log(chalk.green("Running in verbose mode"));
 }
 
-stocks = "autodd";
-strategy = "test";
+stocks = "crypto";
+strategy = "crypto";
 
 // stocks = "watch";
 
@@ -32,21 +32,26 @@ settings = {
     comparisons: ["h3ka"],
     alphavantagekey: keys.alphavantage.key,
     alpaca: keys.alpaca,
+    ftx: keys.ftx,
+    isCrypto: true,
     coinApiKey: keys.coinAPI.key,
     supportPartialShares: true,
-    startingCapital: 100000,
+    startingCapital: 100,
     verbose: verbose,
+    verbose: true,
     tradingTimeout: 1 * 60 * 1000,
     timeframe: "daily", // daily, minute
     interval: false, // 1min, 5min, 15min, 30min, 60min, false if daily
     tradingStart: "2021-01-04 00:00:00", 
+    cryptoDelay: 60,
     timeWindow: {
         start: "2021-01-04 00:00:00", 
-        start: "2018-01-01 00:00:00",
-        end: "2021-01-30 00:00:00",
+        start: "2020-01-01 00:00:00",
+        end: "2020-03-30 00:00:00",
 
         // start: "2017-12-01 00:00:00",
-        // end: "2020-03-16 00:00:00",
+        // start: "2021-01-31 00:00:00",
+        end: "2020-03-16 00:00:00",
         // start: false // use all available data
     },
     thresholds: {

@@ -6,14 +6,8 @@ var Trade = require('./trade');
 const moment = require('moment');
 const tickers = require('./tickers');
 const logger = require('./logger');
-
-const Alpaca = require('@alpacahq/alpaca-trade-api')
-
-try {
-    const alpaca = new Alpaca({
-        usePolygon: false
-    });
-} catch (e) {}
+const Broker = require('./broker');
+const broker = new Broker();
 
 chalk.colorize = function(val, base, str) {
     if (val * 1 > base * 1) {
@@ -74,17 +68,30 @@ portfolio.logHoldings = async function(time = settings.timeWindow.start) {
     for (var i in holdings) {
         var holding = holdings[i][0];
         var profit = holding.data.entry.info.unrealized_plpc * 1;
-        logger.log([
-            "HOLD",
-            holding.ticker,
-            chalk.colorize(profit,0,"ROI: " + profit.toFixed(5)),
-            chalk.colorize(profit,0,"Profit: " + (profit * 100).toFixed(2)+"%"),
-            chalk.colorize(profit,hodl[holding.ticker],"HODL: " + (hodl[holding.ticker] * 100).toFixed(2)+"%"),
-            "Entry: "+(holding.data.entry.info.avg_entry_price * 1).toFixed(2),
-            "Now: "+(holding.data.entry.info.current_price * 1).toFixed(2),
-            "Total: "+(holding.data.entry.info.market_value * 1).toFixed(2),
-
-        ]);
+        if (settings.isCrypto) {
+            logger.log([
+                "HOLD",
+                holding.ticker,
+                "Entry: $"+(holding.data.entry.info.avg_entry_price * 1).toFixed(0),
+                "Qty: "+(holding.quantity).toFixed(8),
+                "Now: $"+(holding.data.entry.info.current_price * 1).toFixed(0),
+                "Total: $"+(holding.data.entry.info.market_value * 1).toFixed(2),
+    
+            ]);
+        } else {
+            logger.log([
+                "HOLD",
+                holding.ticker,
+                chalk.colorize(profit,0,"ROI: " + profit.toFixed(5)),
+                chalk.colorize(profit,0,"Profit: " + (profit * 100).toFixed(2)+"%"),
+                chalk.colorize(profit,hodl[holding.ticker],"HODL: " + (hodl[holding.ticker] * 100).toFixed(2)+"%"),
+                "Entry: "+(holding.data.entry.info.avg_entry_price * 1).toFixed(2),
+                "Now: "+(holding.data.entry.info.current_price * 1).toFixed(2),
+                "Total: "+(holding.data.entry.info.market_value * 1).toFixed(2),
+    
+            ]);
+        }
+        
     }
 }
 
@@ -182,12 +189,39 @@ portfolio.calculate = function() {
     this.portfolioValue = this.portfolioValue.toFixed(2);
 }
 
-portfolio.updateFromAlpaca = function(account, holdings, checkIfWatched = false) {
+portfolio.updateFromBroker = function(account, holdings, checkIfWatched = false) {
+    portfolio.holdings = {};
     this.liveFromAlpaca = true;
     this.cash = account.cash * 1;
     this.portfolioValue = account.portfolio_value * 1;
+    if (settings.isCrypto) {
+        this.portfolioValue = account.result.totalAccountValue * 1;
+        holdings = holdings.result;
+        if (holdings) {
+            var cryptoHoldings = [];
+            for (var i = 0; i < holdings.length; i++) {
+                if (holdings[i].coin === "USD") {
+                    this.cash = holdings[i].free;
+                } else {
+                    if (holdings[i].free > 0.0001) {
+                        var qty = Math.floor(holdings[i].free * 10000) / 10000
 
-
+                        cryptoHoldings.push({
+                            symbol: holdings[i].coin,
+                            qty: qty,
+                            avg_entry_price: holdings[i].usdValue / qty,
+                            current_price: holdings[i].usdValue / qty,
+                            market_value: holdings[i].usdValue,
+                            data: {
+                                price: holdings[i].usdValue
+                            }
+                        });
+                    }
+                }
+            } 
+            holdings = cryptoHoldings;
+        }
+    }
     for (var index = 0; index < holdings.length; index++) {
         (function(i) {
             var holding = holdings[i];
@@ -201,9 +235,10 @@ portfolio.updateFromAlpaca = function(account, holdings, checkIfWatched = false)
             portfolio.holdings[holding.symbol].push(trade);
             
             // if no longer in watchlist
-            if (checkIfWatched && !tickers.isWatched(holding.symbol)) {
+            if (checkIfWatched && !tickers.isWatched(holding.symbol) && !settings.isCrypto) {
                 // attempt to sell holding
-                alpaca.getBars(
+                console.log('no longer watched');
+                broker.getBars(
                     settings.alpacaRange,
                     holding.symbol
                 ).then(response => {
@@ -238,6 +273,10 @@ portfolio.updateFromAlpaca = function(account, holdings, checkIfWatched = false)
 }
 
 portfolio.getAmountToSpend = function(info) {
+    if (isNaN(this.cash)) {
+        console.log("CASH IS NAN");
+        process.exit();
+    }
     return this.strategies[0].amountToSpend(
         info,
         this.cash,
@@ -249,8 +288,20 @@ portfolio.getAmountToSpend = function(info) {
 }
 
 portfolio.openTrade = function(stock, time, price, info) {
+
+    if (this.cash === 0) {
+        return;
+    }
+
     try {
     var cashToSpend = this.getAmountToSpend(info);
+    
+    if (isNaN(cashToSpend)) {
+        console.log("cash to spend is NaN");
+        console.log(info);
+        process.exit();
+    }
+
     } catch (e) {
         logger.error([
             "BUY ",
@@ -270,11 +321,14 @@ portfolio.openTrade = function(stock, time, price, info) {
         return;
     }
     var quantity = cashToSpend / price;
+    quantity = Math.ceil(quantity * 10000) / 10000
+    if (isNaN(quantity)) {
+        quantity = 0.0001;
+    }
     if (!settings.supportPartialShares) {
         quantity = Math.floor(quantity);
         cashToSpend = quantity * price;
     }
-    cashToSpend = cashToSpend;
     if (quantity <= 0) {
 
         logger.error([
@@ -296,7 +350,7 @@ portfolio.openTrade = function(stock, time, price, info) {
     logger.alert([
         chalk.green("BUY "),
         stock,
-        Math.round(quantity),
+        quantity,
         Math.round(price)+"     ",
         Math.round(cashToSpend)+"  ",
         info.buySignal,
@@ -304,7 +358,9 @@ portfolio.openTrade = function(stock, time, price, info) {
     ], moment(time));
     
     var trade = new Trade(time, stock, quantity, price, info);
-    this.cash = this.cash - cashToSpend;
+    if(!isNaN(cashToSpend)) {
+        this.cash = this.cash - cashToSpend;
+    }
     if (this.holdings[stock] == undefined) {
         this.holdings[stock] = [];
     }
@@ -312,46 +368,48 @@ portfolio.openTrade = function(stock, time, price, info) {
 }
 
 portfolio.closeAll = function(stock, details, trade = false) {
+    var didSell = false;
     if (portfolio.holdings[stock] == undefined) {
         portfolio.holdings[stock] = [];
     }
     if (trade) {
-        portfolio.holdings[stock] = [trade];
+        // portfolio.holdings[stock] = [trade];
     }
-
-    if (portfolio.holdings[stock].length == 0) {
+    if (portfolio.holdings[stock].length == 0 || portfolio.holdings[stock][0].quantity == 0) {
         logger.error([
             "SELL",
             stock,
             "No holding found?",
             details.reason
         ], moment(details.time));
+        return didSell;
     }
-
-    // console.log("wat now", stock);
-    // console.log(portfolio.holdings[stock]);
-    // console.log(holdings);
-    // console.log("hide");
+   
     var didNotSellAtALoss = false;
-    // console.log(details);
-    // console.log("wat",stock, portfolio.holdings[stock].length);
-    
     for ( var i = 0; i < portfolio.holdings[stock].length; i++) {
-        var trade = portfolio.holdings[stock][i];
+        var holding = portfolio.holdings[stock][i];
         
-        var total = details.price * trade.quantity;
+        if (settings.isCrypto) {
+            holding = portfolio.holdings.BTC[i];
+        }
+        var total = details.price * holding.quantity;
         // never sell at a loss
         var acceptableLoss = 0;
-        if (this.strategies[0].acceptableLoss !== undefined) {
-            acceptableLoss = this.strategies[0].acceptableLoss;
-            acceptableLoss = trade.data.entry.price * (1 + acceptableLoss);
-        }
-
-        if (acceptableLoss <= details.price || details.force == true) {
-            if (portfolio.sellStock !== undefined) {
-                portfolio.sellStock(stock, trade.quantity);
+        // if (!settings.isCrypto) {
+            if (this.strategies[0].acceptableLoss !== undefined) {
+                acceptableLoss = this.strategies[0].acceptableLoss;
+                acceptableLoss = holding.data.entry.price * (1 + acceptableLoss);
             }
-            trade.exitPosition(details.time, details.price, details.info, details.reason);
+        // }
+
+
+        if (settings.isCrypto || acceptableLoss <= details.price || details.force == true) {
+            if (portfolio.sellStock !== undefined) {
+                portfolio.sellStock(stock, holding.quantity);
+            }
+            if (trade && trade.exitPosition !== undefined) {
+                trade.exitPosition(details.time, details.price, details.info, details.reason);
+            }
             if (this.takings[stock] == undefined) {
                 this.takings[stock] = 0;
             }
@@ -364,37 +422,35 @@ portfolio.closeAll = function(stock, details, trade = false) {
                 chalk.green("SELL"),
                 stock,
                 chalk.colorize(
-                    trade.data.profit,
+                    holding.data.profit,
                     0,
-                    Math.round(trade.data.profit) + " ("+(trade.data.profitPct * 100).toFixed(1)+"%)"
+                    Math.round(holding.data.profit) + " ("+(holding.data.profitPct * 100).toFixed(1)+"%)"
                 ),
                 Math.round(details.price) + "     ",
+                holding.quantity + "     ",
+               
                 Math.round(total)+"  ",
                 details.info.sellSignal,
                 details.reason,
-                "Entry: "+moment(trade.data.entry.time).format("DD/MM/YYYY HH:mm:ss")
+                "Entry: "+moment(holding.data.entry.time).format("DD/MM/YYYY HH:mm:ss")
             ], moment(details.time));
-
+            didSell = true;
             this.cash = this.cash * 1 + total
             this.completedTrades.push(trade);
             this.holdings[stock][i] = null;
         } else if (!didNotSellAtALoss) {
-
-            trade.currentValue({close: details.price});
             didNotSellAtALoss = true;
-            
+            if (trade.currentValue !== undefined) {
+                trade.currentValue({close: details.price});
+            }
             logger.error([
                 "SELL",
                 stock,
-                chalk.colorize(
-                    trade.data.profit,
-                    0,
-                    Math.round(trade.data.profit) + " ("+(trade.data.profitPct * 100).toFixed(1)+"%)"
-                ),
+                "bleh",
                 "Not accepting a loss",
                 details.info.sellSignal,
                 details.reason,
-                "Entry: "+moment(trade.data.entry.time).format("DD/MM/YYYY HH:mm:ss")
+                // "Entry: "+moment(trade.data.entry.time).format("DD/MM/YYYY HH:mm:ss")
             ], moment(details.time));
         }
        
@@ -410,6 +466,7 @@ portfolio.closeAll = function(stock, details, trade = false) {
     }
 
     this.cash = Math.max(this.cash, 0);
+    return didSell;
 }
 
 class Singleton {

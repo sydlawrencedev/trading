@@ -39,20 +39,15 @@ chalk.colorize = function(val, base, str, isBG = true) {
 
 
 
+const Broker = require('./modules/broker');
+const broker = new Broker();
+
 const settings = require('./settings');
-const Alpaca = require('@alpacahq/alpaca-trade-api')
 const dataForge = require('data-forge');
 require('data-forge-fs'); // For loading files.
 require('data-forge-indicators'); // For the moving average indicator.
 const { backtest, analyze, computeEquityCurve, computeDrawdown } = require('grademark');
 
-process.env.APCA_API_KEY_ID = settings.alpaca.key;
-process.env.APCA_API_SECRET_KEY = settings.alpaca.secret;
-process.env.APCA_API_BASE_URL = settings.alpaca.endpoint;
-
-const alpaca = new Alpaca({
-    usePolygon: false
-});
 
 var startingCash = settings.startingCapital;
 var maxActiveHoldings = 20;
@@ -74,11 +69,9 @@ let addIndicators = strat.addIndicators;
 
 
 gotBars = function(bars, moreToTry) {
-   
+    
     (async function() {
 
-
-        var requiresActivty = false;  
         var  df;
         for (var j = 0; j < stocks.length; j++) {
             var stock = stocks[j];
@@ -86,19 +79,23 @@ gotBars = function(bars, moreToTry) {
                 .transformSeries({
                     startEpochTime: value => new Date(value*1000)
                 })
-            df = df.setIndex("startEpochTime") // Index so we can later merge on date.
-                    .renameSeries({ startEpochTime: "time" })
-                    .renameSeries({ openPrice: "open" })
-                    .renameSeries({ highPrice: "high" })
-                    .renameSeries({ lowPrice: "low" })
-                    .renameSeries({ closePrice: "close" });
+            if (settings.isCrypto) {
+                df = df.setIndex("time") // Index so we can later merge on date.
+            } else {
+
+                df = df.setIndex("startEpochTime") // Index so we can later merge on date.
+                        .renameSeries({ startEpochTime: "time" })
+                        .renameSeries({ openPrice: "open" })
+                        .renameSeries({ highPrice: "high" })
+                        .renameSeries({ lowPrice: "low" })
+                        .renameSeries({ closePrice: "close" });
+            }
             await trader.addStock(stock, df);
                 
+
             // save to file
             df.reverse().renameSeries({time: "timestamp"}).asCSV()                            // Write out data file in CSV (or other) format.
                 .writeFileSync(process.mainModule.path+"/data/"+marketdata.filename(stock,"minute","1min")+"-live-"+moment().format("YYYY-MM-DD-HH")+".csv");
-
-
 
         }
 
@@ -111,28 +108,33 @@ gotBars = function(bars, moreToTry) {
             trades = [];
         }
 
-
-
         var timeOfLastTrade = await trader.getLastTradeTime();
 
         trader.portfolio.holdings = {};
 
         var attemptedTrades = {};
-
+        // timeOfLastTrade -= 15 * 60;
+        // timeOfLastTrade = 0;
         trades = trades.filter(trade => trade.time > timeOfLastTrade); 
-
+        console.log(trades);
+        logger.status("Last trade: " + moment(timeOfLastTrade).format("DD/MM/YYYY HH:mm"));
+        logger.status("First data: " + moment(df.first().time).format("DD/MM/YYYY HH:mm"));
         logger.status("Latest data: " + moment(df.last().time).format("DD/MM/YYYY HH:mm"));
         logger.status(trades.length + " potential trades found")
-
+        
+        var account = await broker.getAccount();
+        var positions = await broker.getPositions();
+        portfolio.updateFromBroker(account, positions);
         // go through all sell trades
         for (var i = 0; i < trades.length; i++) {
             var trade = trades[i];
 
             if (trade.sellSignal > trade.buySignal) {
                 try {
-                    var position = await getStock(trade.ticker)
+                    var position = await getStock(trade.ticker);
+
                     var toSell = true;
-                    if (trader.strategies[0].acceptableLoss !== undefined) {
+                    if (trader.strategies[0].acceptableLoss !== undefined && !settings.isCrypto) {
                         acceptableLoss = trader.strategies[0].acceptableLoss;
                         if (position.unrealized_plpc * 1 < acceptableLoss) {
                             toSell = false;
@@ -153,22 +155,19 @@ gotBars = function(bars, moreToTry) {
                     }
                     if (toSell) {
 
-                        requiresActivty = true;
-
                         attemptedTrades[trade.ticker] = true;
-                        var sellResponse = await sellStock(trade.ticker, position.qty);
-                        await portfolio.closeAll(trade.ticker, {
-                            time: (new Date()).getTime(),
-                            price: position.current_price,
+                        var didSell = await portfolio.closeAll(trade.ticker, {
+                            time: trade.time,
+                            price: trade.close,
                             info: trade.sellSignal,
                             reason: trade.sellReason
                         }, trade);
-
-                        
-
-                        var account = await alpaca.getAccount();
-                        var positions = await alpaca.getPositions();
-                        portfolio.updateFromAlpaca(account, positions);
+                        if (didSell) {
+                            var sellResponse = await sellStock(trade.ticker, position.result[1].free);
+                            var account = await broker.getAccount();
+                            var positions = await broker.getPositions();
+                            portfolio.updateFromBroker(account, positions);
+                        }
                     }
                 } catch (e) {
                     if (e.error !== undefined && e.error.code == 40410000) {
@@ -202,22 +201,20 @@ gotBars = function(bars, moreToTry) {
 
             if (trade.buySignal > trade.sellSignal) {
                 try {
-                    requiresActivty = true;
-                    var account = await alpaca.getAccount();
-                    var positions = await alpaca.getPositions();
-                    portfolio.updateFromAlpaca(account, positions);
+                    var account = await broker.getAccount();
+                    var positions = await broker.getPositions();
+                    portfolio.updateFromBroker(account, positions);
                     var amountToSpend = portfolio.getAmountToSpend(trade);
-                    var quantity = Math.floor(amountToSpend / trade.close);
+                    var quantity = Math.floor((amountToSpend / trade.close) * 10000) / 10000;
                     amountToSpend = quantity * trade.close;
                     if (quantity > 0) {
-                        
                         
                         var purchase = await buyStock(trade.ticker, quantity, trade.close)
 
                         portfolio.openTrade(trade.ticker, moment(), trade.close, trade);
-                        var account = await alpaca.getAccount();
-                        var positions = await alpaca.getPositions();
-                        portfolio.updateFromAlpaca(account, positions);
+                        var account = await broker.getAccount();
+                        var positions = await broker.getPositions();
+                        portfolio.updateFromBroker(account, positions);
                     }
                 } catch (e) {
                     logger.error([
@@ -236,9 +233,9 @@ gotBars = function(bars, moreToTry) {
             
         }
 
-        var account = await alpaca.getAccount();
-        var positions = await alpaca.getPositions();
-        portfolio.updateFromAlpaca(account, positions);
+        var account = await broker.getAccount();
+        var positions = await broker.getPositions();
+        portfolio.updateFromBroker(account, positions);
         portfolio.logProfits();
         portfolio.logStatus();
         trader.saveLastTradeTime();
@@ -255,10 +252,7 @@ gotBars = function(bars, moreToTry) {
     });
 }
 
-
 async function main(repeating) {
-
-
     logger.setMode("trading_"+settings.strategy+"_"+settings.stockFile);
 
     if (repeating !== true) {
@@ -268,94 +262,88 @@ async function main(repeating) {
     stocks = await tickers.fetch(settings.stockFile)
 
     // Check if the market is open now.
-    alpaca.getClock().then((clock) => {
-        if (clock.is_open) {
+    broker.ifOpen(function() {
             logger.setup("Adding " + stocks.length + " stocks")
-            alpaca.getAccount().then((account, err) => {
+            broker.getAccount().then((account, err) => {
                 if (!account) {
                     console.log(chalk.red("eurgh"));
                     console.log(account);
                     console.log(err);
                 }
-
-                alpaca.getPositions().then(positions => {
-                    alpaca.getBars(
+                broker.getPositions().then(positions => {
+                    broker.getBars(
                         settings.alpacaRange,
                         stocks
                     ).then(response => {
-                        portfolio.updateFromAlpaca(account, positions, true);
+                        if (settings.isCrypto) {
+                            response = {BTC:response.result}
+                        }
+                        
+                        portfolio.updateFromBroker(account, positions, true);
                         gotBars(response, true);  
                         trader.portfolio.logStatus(); 
-                    }).catch(e => 
+                    }).catch(e => {
+                        console.log(e);
                         logger.error([
                             "ERROR",
                             "Failed to get market data from alpaca",
                             e.error,
                             e.message
-                        ]) 
-                    );
+                        ])
+                    });
                 });     
             });
-        } else {
-            logger.error("Market is closed");
-        }
+    }, function()  {
+        logger.error("Market is closed");
     });
 }
 
 getStock = function(stock) {
-    return alpaca.getPosition(stock);
+    return broker.getPosition(stock);
 }
 
 sellStock = function(stock, qty) {
-    if (qty < 1) { return; }
+    qty = Math.floor(qty * 10000) / 10000
+    if (qty < 1 && !settings.supportPartialShares) { return; }
     return orderStock("sell", stock, qty);
 }
 
 portfolio.sellStock = sellStock;
 
 buyStock = function(stock, qty, currentPrice) {
-    if (qty < 1) { return; }
+    qty = Math.floor(qty * 10000) / 10000
+    if (qty < 1 && !settings.supportPartialShares) { return; }
     return orderStock("buy", stock, qty, currentPrice);
 }
 
-orderStock = function(order, stock, qty, currentPrice) {
-    qty = Math.max(1,Math.round(qty));
-    if (order == "buy") {
-        var take_profit = currentPrice * 1.05;
-        var stop_loss = currentPrice * 0.98;
+orderStock = async function(order, stock, qty, currentPrice) {
+    if (currentPrice == undefined) {
+        var t = await broker.getSpotPrice("BTC/USD");
+        currentPrice = t.result.price;
     }
-    return alpaca.createOrder({
-        symbol: stock, // any valid ticker symbol
-        qty: Math.max(1,qty),
-        side: order,
-        type: 'market',
-        time_in_force: 'day',
-        take_profit: {
-            limit_price: take_profit
-        },
-        stop_loss: {
-            stop_price: stop_loss
-        },
-    })
-    .catch(e => logger.error(["ERROR",e.message]))
-    .error(e => logger.error(["ERROR",e.message]));
+    qty = Math.floor(qty * 10000) / 10000
+
+    return broker.createOrder(order, stock, qty,currentPrice)
+        .catch(e => logger.error(["ERROR",e.message,order,stock,qty,currentPrice]))
+        // .error(e => logger.error(["ERROR",e.message]));
 }
 
 logger.setup([
     "Stocklist: "+chalk.yellow(settings.stockFile),
     "Strategy: "+chalk.yellow(settings.strategy)
-]);
+]); 
 
-main().then(e => {
-    
-}).catch(e => {
-    logger.error(["ERROR",e.message])
-});
-if (settings.alpacaRange == "minute") {
-    setInterval(function() {
-        trader.portfolio.logStatus();
-    }, 5 * 60 * 1000);
+var x = function() {
+    main().then(e => {
+        broker.getSpotPrice("BTC/USD")
+    }).catch(e => {
+        logger.error(["ERROR",e.message])
+    });
+    if (settings.alpacaRange == "minute") {
+        
+    }
 }
+x();
 
 
 // setInterval(function() {

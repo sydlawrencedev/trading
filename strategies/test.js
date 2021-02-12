@@ -5,7 +5,7 @@ module.exports = {
     description: "H3ka v0.3",
     name: "H3ka v0.3",
     limitOrder: 2.20, // no acceptable limit order
-    stopLoss: -200, // it'll never stop loss
+    stopLoss: -0.2, // it'll stop loss
     acceptableLoss: 0, // there is no acceptable loss
     maxTradesOpen: 40, //100, // each stock should be able to have some form of opening
     maxOpenPerTicker: 30000000,
@@ -16,7 +16,7 @@ module.exports = {
     maxBuyMoreProfit: 0.50,
     maxBuyMoreLoss: -0.05,
     amountToSpend: function(info, totalCash, openTrades = [], openTradesSameTicker = [], allHoldings = {}, portfolio) {
-        this.maxTradesOpen = Math.min(50,tickers.active.length);
+        this.maxTradesOpen = Math.min(50,tickers.active.length, this.maxTradesOpen);
         var anyAtLoss = false;
         var tradedBefore = openTradesSameTicker.length > 0;
         var totalHolding = 0;

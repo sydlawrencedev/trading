@@ -8,6 +8,11 @@ module.exports = {
         key: "ALPHAVANTAGEKEY"
     },
     coinAPI: { // https://www.coinapi.io/pricing?apikey
-        key: "B12FFC1E-5BC3-4439-A0A7-129A6805C652"
+        key: "EXAMPLE"
+    },
+    ftx: { // https://ftx.com/#a=9721115
+        key: "KEY",
+        secret: "SECRET",
+        subaccount: "SUBACCOUNT"
     }
 }
