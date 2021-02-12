@@ -190,8 +190,11 @@ trader.performTrades = function(combinedStockData, combinedTrades) {
     for (const trade of combinedTrades) {
         if (trade.sellOut || trade.stopLoss || trade.limitOrder) {
             var reason = trade.sellReason;
+            var force = false;
             if (trade.stopLoss) {
+                console.log("stop loss", trade.ticker);
                 reason = "Stop loss: " + trade.stopLoss;
+                force = true;
             }
             if (trade.limitOrder) {
                 reason = "Limit order: " + trade.limitOrder;
@@ -200,7 +203,8 @@ trader.performTrades = function(combinedStockData, combinedTrades) {
                 time: trade.time,
                 price: trade.open,
                 info: trade,
-                reason: reason
+                reason: reason,
+                force: force
             });
         } else if (trade.buyIn) {
             portfolio.openTrade(trade.ticker, trade.time, trade.close, trade);
@@ -228,7 +232,7 @@ trader.performTrades = function(combinedStockData, combinedTrades) {
 
 trader.getSingleHodl = async function(ticker, startTime = settings.timeWindow.start, endTime = settings.timeWindow.end) {
     
-    var cachebust = 4;
+    var cachebust = 7;
     var cacheKey = "hodl_"+ticker+"_"+startTime+"_"+endTime+"_"+cachebust;
 
     var hodl = myCache.getSync(cacheKey); //{ color: 'red' }
@@ -243,20 +247,21 @@ trader.getSingleHodl = async function(ticker, startTime = settings.timeWindow.st
         close = data.last().close
         start = data.where(row => row.time >= moment(startTime));
         if (start.count() > 0) {
-            start = start.first().close;
+            
+            start = start.first().close
         } else {
             start = undefined;
         }
     }
     if (start == undefined) {
-        var startBars = await alpaca.getBars( 'day', ticker, { limit: 2, end: moment(startTime).format()})
+        var startBars = await alpaca.getBars( 'day', ticker, { limit: 5, end: moment(startTime).format()})
         if (startBars[ticker].length == 0) {
-            startBars = await alpaca.getBars( 'day', ticker, { limit: 2, after: moment(startTime).format()})
+            startBars = await alpaca.getBars( 'day', ticker, { limit: 5, after: moment(startTime).format()})
         }
         if (startBars[ticker].length == 0) {
             start = 1;
         } else {
-            start = startBars[ticker][0].closePrice;
+            start = (startBars[ticker][0].closePrice + startBars[ticker][1].closePrice + startBars[ticker][2].closePrice) / 3;
         }
     }
     if (close == undefined) {

@@ -7,7 +7,8 @@ const moment = require('moment');
 const tickers = require('./tickers');
 const logger = require('./logger');
 
-const Alpaca = require('@alpacahq/alpaca-trade-api')
+const Alpaca = require('@alpacahq/alpaca-trade-api');
+const { count } = require("console");
 
 try {
     const alpaca = new Alpaca({
@@ -39,6 +40,8 @@ var portfolio = {
     takings: {},
     spendings: {},
     holdings: {},
+    wins: {},
+    losses: {},
     portfolioValue: startingCash
 }
 
@@ -47,6 +50,16 @@ portfolio.logProfits = async function(time = settings.timeWindow.start, end = se
     var profits = this.getProfits();
     var hodl = await this.getHODL(Object.keys(profits), time, end);
     for (var i in profits) {
+
+        var totalLosses = 0
+        var totalWins = 0
+        for (var j in this.wins[i]) {
+            totalWins += this.wins[i][j].trade.data.profit;
+        }
+        for (var j in this.losses[i]) {
+            totalLosses += this.losses[i][j].trade.data.profit;
+        }
+
         logger.log([
             "STOCK",
             i,
@@ -56,7 +69,8 @@ portfolio.logProfits = async function(time = settings.timeWindow.start, end = se
             "Out: $"+Math.round(this.spendings[i]),
             "In: $"+Math.round(this.takings[i]),
             "Diff: $"+Math.round(this.takings[i] - this.spendings[i]),
-
+            "Wins: "+this.wins[i].length + " ("+Math.round(totalWins)+")",
+            "Losses: "+this.losses[i].length + " ("+Math.round(totalLosses)+")",
         ]);
     }
 }
@@ -352,7 +366,15 @@ portfolio.closeAll = function(stock, details, trade = false) {
             trade.exitPosition(details.time, details.price, details.info, details.reason);
             if (this.takings[stock] == undefined) {
                 this.takings[stock] = 0;
+                this.wins[stock] = [];
+                this.losses[stock] = [];
             }
+            if (trade.data.profit > 0) {
+                this.wins[stock].push({trade: trade, details: details});
+            }
+            else {
+                this.losses[stock].push({trade: trade, details: details});
+            }            
 
             // if (details.force) {
             // }
