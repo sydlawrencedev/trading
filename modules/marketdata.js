@@ -32,6 +32,7 @@ var  MarketData = {
         }
         var df;
         var url = "https://www.alphavantage.co/query?function="+dataFunction+"&symbol="+stockTicker+"&outputsize=full&datatype=csv&apikey="+settings.alphavantagekey;
+        console.log(url);
         if (interval) {
             url += "&interval="+interval;
         }
@@ -67,6 +68,7 @@ var  MarketData = {
     },
     
     getHistoricSingle: async function(stockTicker, timeframe = "daily", interval = false) {
+
         var filename = process.mainModule.path+"/data/"+this.filename(stockTicker,timeframe,interval)+".csv";
         var df;
         try {
@@ -137,6 +139,7 @@ var  MarketData = {
         if (df.count() == 0) {
             // console.log(x.toString());
             logger.error([stockTicker,"No data found for "+moment(settings.timeWindow.start) + " -> " + moment(settings.timeWindow.end)]);
+            return this.fetchHistoricSingle(stockTicker, timeframe, interval);
         }
 
         return df;

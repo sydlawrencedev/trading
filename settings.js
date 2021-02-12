@@ -8,7 +8,7 @@ if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
     console.log(chalk.green("Running in verbose mode"));
 }
 
-stocks = "autodd";
+stocks = "test";
 strategy = "test";
 
 // stocks = "watch";
@@ -44,8 +44,8 @@ settings = {
         start: "2020-01-01 00:00:00",
         end: "2020-12-30 00:00:00",
 
-        start: "2017-12-01 00:00:00",
-        end: "2020-03-16 00:00:00",
+        start: "2000-12-01 00:00:00",
+        end: "2002-01-16 00:00:00",
         // start: false // use all available data
     },
     thresholds: {
