@@ -140,13 +140,39 @@ portfolio.logStatus = async function(time = settings.timeWindow.start) {
         "Range: "+chalk.yellow(settings.alpacaRange),
         "Trading start: "+chalk.yellow(moment(time).format("DD/MM/YY")),
     ])
+    var wins = 0;
+    var losses = 0;
+    var rmultiples = [];
+    for (var i in this.wins) {
+        wins += this.wins[i].length;
+        for (var j = 0; j < this.wins[i].length; j++) {
+            rmultiples.push(this.wins[i][j].trade.rmultiple)
+        }
+    }
+
+    for (var i in this.losses) {
+        losses += this.losses[i].length;
+        for (var j = 0; j < this.losses[i].length; j++) {
+            rmultiples.push(this.losses[i][j].trade.rmultiple)
+        }
+    }
+
+    const sum = rmultiples.reduce((a, b) => a + b, 0);
+    const avg = (sum / rmultiples.length) || 0;
+
+    var winRatio = (wins / (wins + losses)) * 100 
+    var winLoss = (wins / losses) * 100 
     logger.log([
         "STATUS",
         chalk.colorize(roi,0,"ROI: "+ roi.toFixed(5)),
         chalk.colorize(roi,0,"Profit: "+(roi * 100).toFixed(2)+"%"),
+        
+        chalk.colorize(winRatio,50,"Win-rate: "+Math.round(winRatio)+"%"),
+        "Win-loss: "+Math.round(winLoss)+"%",
+        "R-multiple total: "+Math.round(sum*100)/100+"R, ave: "+Math.round(avg*100)/100+"R",
         hodlAverageText,
         "Portfolio: $"+Math.round(this.portfolioValue),
-        "Cash: $"+this.cash.toFixed(0),            
+        "Cash: $"+this.cash.toFixed(0),        
     ]);
     var params = [];
     var obj = {
@@ -363,7 +389,7 @@ portfolio.closeAll = function(stock, details, trade = false) {
             if (portfolio.sellStock !== undefined) {
                 portfolio.sellStock(stock, trade.quantity);
             }
-            trade.exitPosition(details.time, details.price, details.info, details.reason);
+            trade.exitPosition(details.time, details.price, details.info, details.reason, this.strategies[0].stopLoss);
             if (this.takings[stock] == undefined) {
                 this.takings[stock] = 0;
                 this.wins[stock] = [];
@@ -380,6 +406,7 @@ portfolio.closeAll = function(stock, details, trade = false) {
             // }
             this.takings[stock] += total;
             
+            
             logger.alert([
                 chalk.green("SELL"),
                 stock,
@@ -392,6 +419,8 @@ portfolio.closeAll = function(stock, details, trade = false) {
                 Math.round(total)+"  ",
                 details.info.sellSignal,
                 details.reason,
+                "R: $"+Math.round(trade.r),
+                "R-multiple: "+(Math.round(trade.rmultiple*100)/100)+"R",
                 "Entry: "+moment(trade.data.entry.time).format("DD/MM/YYYY HH:mm:ss")
             ], moment(details.time));
 

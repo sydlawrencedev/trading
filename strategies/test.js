@@ -4,10 +4,10 @@ const tickers = require('../modules/tickers');
 module.exports = {
     description: "H3ka v0.3",
     name: "H3ka v0.3",
-    limitOrder: 2.20, // no acceptable limit order
-    stopLoss: -0.2, // it'll never stop loss
-    acceptableLoss: -0.2, // there is no acceptable loss
-    maxTradesOpen: 40, //100, // each stock should be able to have some form of opening
+    limitOrder: 3.15, // no acceptable limit order
+    stopLoss: -0.2, // stop loss at 20%
+    acceptableLoss: -0.2, // accept a loss up to -20%
+    maxHoldings: 20,
     maxOpenPerTicker: 30000000,
     maxHolding: 0.2, // max holding 20% of the portfolio
     buySignalCashWeighting: 50,
@@ -16,7 +16,7 @@ module.exports = {
     maxBuyMoreProfit: 0.50,
     maxBuyMoreLoss: -0.05,
     amountToSpend: function(info, totalCash, openTrades = [], openTradesSameTicker = [], allHoldings = {}, portfolio) {
-        this.maxTradesOpen = Math.min(50,tickers.active.length);
+        this.maxTradesOpen = Math.min(this.maxHoldings,tickers.active.length);
         var anyAtLoss = false;
         var tradedBefore = openTradesSameTicker.length > 0;
         var totalHolding = 0;
