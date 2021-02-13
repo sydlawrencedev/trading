@@ -249,6 +249,7 @@ trader.getSingleHodl = async function(ticker, startTime = settings.timeWindow.st
         if (start.count() > 0) {
             
             start = start.first().close
+            console.log(start);
         } else {
             start = undefined;
         }

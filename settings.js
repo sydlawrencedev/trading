@@ -8,7 +8,7 @@ if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
     console.log(chalk.green("Running in verbose mode"));
 }
 
-stocks = "test";
+stocks = "watch2020";
 strategy = "test";
 
 // stocks = "watch";
@@ -33,7 +33,7 @@ settings = {
     alphavantagekey: keys.alphavantage.key,
     alpaca: keys.alpaca,
     supportPartialShares: false,
-    startingCapital: 1000,
+    startingCapital: 100000,
     verbose: verbose,
     tradingTimeout: 1 * 60 * 1000,
     timeframe: "daily", // daily, minute
@@ -44,8 +44,8 @@ settings = {
         start: "2020-01-01 00:00:00",
         end: "2020-12-01 00:00:00",
 
-        start: "1999-01-01 00:00:00",
-        end: "2001-04-01 00:00:00",
+        start: "2020-01-01 00:00:00",
+        end: "2020-12-31 00:00:00",
         // start: false // use all available data
     },
     thresholds: {
