@@ -7,7 +7,7 @@ if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
     verbose = true;
 }
 
-stocks = "spy";
+stocks = "syd";
 strategy = "test";
 
 // stocks = "watch";
@@ -32,7 +32,7 @@ settings = {
     alphavantagekey: keys.alphavantage.key,
     alpaca: keys.alpaca,
     supportPartialShares: false,
-    analyze: true,
+    analyze: false,
     startingCapital: 100000,
     verbose: verbose, //verbose,
     tradingTimeout: 1 * 60 * 1000,
@@ -44,7 +44,7 @@ settings = {
         start: "2020-01-01 00:00:00",
         end: "2020-12-01 00:00:00",
 
-        start: "2020-11-01 00:00:00",
+        start: "2020-10-01 00:00:00",
         end: "2020-12-31 00:00:00",
         // start: false // use all available data
     },

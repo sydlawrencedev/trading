@@ -169,13 +169,13 @@ trader.determineTrades = async function(andThenPerformTrades = false) {
             logger.setup([i,tradesData.count() + " possible trades"]);
 
             if (settings.analyze) {
-                renderData = stockData.subset(["time", "close","fractal", "gatorJaw", "gatorTeeth", "gatorLips", "sma", "smma"]);
+                renderData = stockData.subset(["time", "close","fractal", "gatorJaw", "gatorTeeth", "gatorLips", "gatorChange"]);
 
                 await renderData.plot({},{
-                    y: ["close", "gatorJaw", "gatorTeeth", "gatorLips"],
+                    y: ["close", "gatorJaw", "gatorTeeth", "gatorLips", "gatorChange"],
                     // y2: ["fractal"]
                 }).renderImage("./output/"+i+".png");
-                await renderData.asCSV().writeFile(i+'.csv');
+                await renderData.asCSV().writeFile("./output/"+i+'.csv');
             }
             
 

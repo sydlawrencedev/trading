@@ -4,9 +4,9 @@ const tickers = require('../modules/tickers');
 module.exports = {
     description: "H3ka v0.4",
     name: "H3ka v0.4",
-    limitOrder: 3.15, // no acceptable limit order
-    stopLossPct: -0.02, // stop loss at 20%
-    acceptableLoss: 0, // accept a loss up to -20%
+    limitOrder: 1000.15, // no acceptable limit order
+    stopLossPct: -0.1, // stop loss at 10%
+    acceptableLoss: -0.05, // accept no loss aside from stop loss
     maxHoldings: 20,
     maxOpenPerTicker: 30000000,
     maxHolding: 0.8, // max holding 20% of the portfolio
@@ -17,6 +17,7 @@ module.exports = {
     maxBuyMoreLoss: -0.05,
     amountToSpend: function(info, totalCash, openTrades = [], openTradesSameTicker = [], allHoldings = {}, portfolio) {
         this.maxTradesOpen = Math.min(this.maxHoldings,tickers.active.length);
+        this.maxTradesOpen = Math.ceil(tickers.active.length / 2);
         var anyAtLoss = false;
         var tradedBefore = openTradesSameTicker.length > 0;
         var totalHolding = 0;
@@ -86,14 +87,13 @@ module.exports = {
     },
 
     sellSignal: indicators => {
+
         var sellSignal = 0;
-        if (
-            indicators.extrema * 1 == 1
-            && indicators.direction * 1 == 1
-        ) {
+
+        if (indicators.gatorChange) {
             return {
-                reason: ["extrema: " + indicators.extrema, "direction: " + indicators.direction].join("\t"),
-                signal: 50
+                reason: "gator cross over",
+                signal: 100
             }
         }
         
@@ -153,8 +153,37 @@ module.exports = {
              gatorLips: gatorLips,
              fractal: fractal,
              extrema: extrema,
+            //  momentum: momentum,
              medianPrice: medianPrice
-         }); 
+         }).bake(); 
+
+        gatorChange = inputSeries.deflate((row,index) => {
+            var prev = inputSeries.endAt(row.time).tail(2).first();
+            var changed = 0;
+            if (prev.gatorJaw >= prev.gatorTeeth && row.gatorJaw < row.gatorTeeth) {
+                return 1;
+            }
+            if (prev.gatorJaw < prev.gatorTeeth && row.gatorJaw >= row.gatorTeeth) {
+                return 1;
+            }
+            if (prev.gatorJaw >= prev.gatorLips && row.gatorJaw < row.gatorLips) {
+                return 1;
+            }
+            if (prev.gatorJaw < prev.gatorLips && row.gatorJaw >= row.gatorLips) {
+                return 1;
+            }
+            if (prev.gatorLips >= prev.gatorTeeth && row.gatorLips < row.gatorTeeth) {
+                return 1;
+            }
+            if (prev.gatorLips < prev.gatorTeeth && row.gatorLips >= row.gatorTeeth) {
+                return 1;
+            }
+            return changed;
+        });
+
+        inputSeries = inputSeries.withSeries({
+            gatorChange: gatorChange
+        }).bake(); 
 
         return inputSeries;
     }
