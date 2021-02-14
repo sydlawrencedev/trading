@@ -2,8 +2,8 @@ var data_forge_1 = require("data-forge");
 const tickers = require('../modules/tickers');
 
 module.exports = {
-    description: "H3ka v0.4",
-    name: "H3ka v0.4",
+    description: "H3ka v0.5",
+    name: "H3ka v0.5",
     limitOrder: 1000.15, // no acceptable limit order
     stopLossPct: -0.1, // stop loss at 10%
     acceptableLoss: -0.05, // accept no loss aside from stop loss
