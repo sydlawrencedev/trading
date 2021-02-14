@@ -6,8 +6,8 @@ For the entirety of 2020
 
 Takes around an hour to run them all
 
-stocklist               hodl    30/12/2020  2/1/21          12/2/21
-watch                   2.7648              2.31534         7.18557      
+stocklist               hodl    30/12/2020  2/1/21          12/2/21     14/2/21
+watch                   2.7648              2.31534         7.18557     4.04139 
 watch2020               1.6927  5.45141     5.33981         18.27752
 bear                    -0.1067 0.61005     0.36814         0.45217
 syd                     3.10294 1.23604     0.45685         0.30115
@@ -16,10 +16,36 @@ dec2019wsb              0.67179 0.66532     0.30427 ***     0.19406
 dec2020wsb              1.1631  0.51811     0.19779 ***     0.16433
 biggest2020stocks       5.7516  1.59983     0.55278         0.34001
 mike                    3.2696              0.42383         0.30434
-crypto                  2.2828              0.69241         1.12487
+crypto                  2.2828              0.69241         1.12487     0.91997
 boomer                  0.1405                              0.26678
-SPY                     0.1434                              0.83793
-ARKQ                    0.9629                              2.01590
+SPY                     0.1434                              0.83793     0.63275
+ARKQ                    0.9629                              2.01590     1.15090
+
+For the entirety of 2018
+
+stocklist               hodl    13/2/21
+SPY                     -7.01%  20.98%
+boomer
+
+For the entirety of 2015
+
+stocklist               hodl    13/2/21
+SPY                     -0.76%  -0.25%
+boomer
+
+For the entirety of 2008
+
+stocklist               hodl    13/2/21
+SPY                     -37.74% -23.58%
+boomer
+
+For the entirety of 2000
+
+stocklist               hodl    13/2/21
+SPY                     -9.80%  15.77%
+boomer
+
+
 
 
 

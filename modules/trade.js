@@ -1,4 +1,4 @@
-
+var logger = require("./logger");
 class Trade {
     ticker = ""
     entryTime = 0

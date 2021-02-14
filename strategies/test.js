@@ -5,15 +5,15 @@ module.exports = {
     description: "H3ka v0.4",
     name: "H3ka v0.4",
     limitOrder: 3.15, // no acceptable limit order
-    stopLoss: -0.2, // stop loss at 20%
-    acceptableLoss: -0.2, // accept a loss up to -20%
+    stopLossPct: -0.02, // stop loss at 20%
+    acceptableLoss: 0, // accept a loss up to -20%
     maxHoldings: 20,
     maxOpenPerTicker: 30000000,
-    maxHolding: 0.2, // max holding 20% of the portfolio
+    maxHolding: 0.8, // max holding 20% of the portfolio
     buySignalCashWeighting: 50,
     secondPurchaseStockWeighting: 0.5,
     firstPurchaseStockWeighting: 0.1,
-    maxBuyMoreProfit: 0.50,
+    maxBuyMoreProfit: 0.90,
     maxBuyMoreLoss: -0.05,
     amountToSpend: function(info, totalCash, openTrades = [], openTradesSameTicker = [], allHoldings = {}, portfolio) {
         this.maxTradesOpen = Math.min(this.maxHoldings,tickers.active.length);
@@ -62,7 +62,7 @@ module.exports = {
     },
     buySignal: indicators => {
 
-        if (indicators.upTrendCounter == 25033) {
+        if (indicators.direction == 25033) {
             console.log("is the data formatted correctly?");
             console.log("timestamp,open,high,low,close,volume");
             return 0;
@@ -71,44 +71,11 @@ module.exports = {
         var buySignal = 0;
 
         if (
-            indicators.extrema == -1
-            && indicators.rsi !== undefined
+            indicators.extrema == -1 && indicators.close > indicators.gatorTeeth
         ) {
             return {
                 reason: ["extrema: " + indicators.extrema, "direction: " + indicators.direction].join("\t"),
                 signal: 50
-            }
-        }
-
-        if (
-            indicators.longTermDirection > 0
-            && indicators.direction > 0
-            && indicators.upTrendCounter >= 3
-            && indicators.rsi < 70
-            && indicators.extrema !== 1
-            && indicators.momentum < 0
-        ) {
-            return {
-                reason: ["upTrendCounter: " + indicators.upTrendCounter, "rsi: " + Math.round(indicators.rsi), "extrema: " + JSON.stringify(indicators.extrema), "momentum: " + indicators.momentum.toFixed(3)].join("\t"),
-                signal: indicators.upTrendCounter * 10
-            }
-        } else if (
-            indicators.rsi < 30
-           && indicators.downTrendCounter > 1
-        ) {
-            return {
-                reason: ["rsi: " + Math.round(indicators.rsi)].join("/t"),
-                signal: Math.round(30 - indicators.rsi)
-            }
-        } 
-
-        if (indicators.smaVolume > indicators.volume * 2 
-            && indicators.direction == -1
-            && indicators.downTrendcounter >= 3
-        ) {
-            return {
-                reason: "down and high previous volume - sma:"+indicators.smaVolume+ "\tcurrent:"+indicators.volume ,
-                signal: Math.round(indicators.maxVolume / indicators.volume * 30)
             }
         }
 
@@ -130,48 +97,6 @@ module.exports = {
             }
         }
         
-        // if volume is < 0.5 times the previous sma volume
-        if (indicators.direction > 0 && (indicators.volume * 2 < indicators.smaVolume)) {
-            return {
-                reason: "highpreviousvolume: " + indicators.volume + " * 2 < " + indicators.smaVolume,
-                signal: 10000
-            }
-        }
-
-        if (
-            indicators.upTrendCounter >= 7
-            && indicators.momentum > 0.07
-        ) {
-            return {
-                reason: ["momentum: " + indicators.momentum.toFixed(3), "upTrendCounter: " + indicators.upTrendCounter, "direction: " + indicators.direction, "longTermDirection: " + indicators.longTermDirection].join("\t"),
-                signal: 50
-            }
-        }
-        
-        if (
-            indicators.longTermDirection > 0
-            && indicators.direction > 0
-            && indicators.upTrendCounter >= 3
-            && indicators.rsi > 80
-        ) {
-            return {
-                reason: ["upTrendCounter: " + indicators.upTrendCounter, "rsi: " + Math.round(indicators.rsi)].join("\t"),
-                signal: 50
-            }
-        }
-
-        if (indicators.downTrendCounter >= 2 && indicators.rsi > 70) {
-            return {
-                reason: ["rsi: " + Math.round(indicators.rsi), "downTrendCounter: "+indicators.downTrendCounter].join("\t"),
-                signal: 100
-            }
-        }
-        if (indicators.downTrendCounter >= 3) {
-            return {
-                reason: "downTrendCounter: " + indicators.downTrendCounter,
-                signal: 50
-            }
-        }
         return {
             reason: "",
             signal: sellSignal
@@ -179,46 +104,78 @@ module.exports = {
     },
 
     addIndicators: function(inputSeries) {
-        // Add whatever indicators and signals you want to your data.
-        const direction = inputSeries.deflate(row => row.close).direction(3);
-        const longTermDirection = inputSeries.deflate(row => row.close).direction(20);
-        const upTrendCounter = inputSeries.deflate(row => row.close).trends().counter(trend => trend > 0);
-        const downTrendCounter = inputSeries.deflate(row => row.close).trends().counter(trend => trend < 0);
-        // const longSma = inputSeries.deflate(bar => bar.close).sma(48);                           // 30 day moving average.
-        // const shortSma = inputSeries.deflate(bar => bar.close).sma(13);                           // 7 day moving average.        
-        // const tinySma = inputSeries.deflate(bar => bar.close).sma(3);                           // 7 day moving average.        
-        const rsi = inputSeries.deflate(row => row.close).rsi(14);
-        const smaVolume = inputSeries.deflate(row => row.volume).sma(2);
-        const extrema = inputSeries.deflate(row => row.close).extrema();
-        const momentum = inputSeries.deflate(row => row.close).momentum(3);
-        
-        inputSeries = inputSeries.withSeries({
-            direction: direction,
-            longTermDirection: longTermDirection,
-            upTrendCounter: upTrendCounter,
-            downTrendCounter: downTrendCounter,
-            // longSma: longSma,
-            // shortSma: shortSma,
-            // tinySma: tinySma,
-            rsi: rsi,
-            smaVolume: smaVolume,
-            extrema: extrema,
-            momentum: momentum,
-        }); 
-
-        // not currently using it
-        // try {
-        //     const longEma = inputSeries.deflate(bar => bar.close).ema(30);                           // 30 day moving average.
-        //     const shortEma = inputSeries.deflate(bar => bar.close).ema(7);                           // 7 day moving average.
-
-        //     inputSeries = inputSeries.withSeries({
-        //         longEma: longEma,
-        //         ema: shortEma,
-        //         shortEma: shortEma
-        //     });
-        // } catch (e) {}
-        
+         // Add whatever indicators and signals you want to your data.
+         const direction = inputSeries.deflate(row => row.close).direction(3);
+       
+         const extrema = inputSeries.deflate(row => row.close).extrema();
+         const medianPrice = inputSeries.deflate(row => (row.high + row.low) / 2);
+         inputSeries = inputSeries.withSeries({
+             extrema: extrema,
+             medianPrice: medianPrice
+         });
+         
+         const fractal = inputSeries.deflate((row) => {
+             switch (row.extrema) {
+                 case 1:
+                     return 1;
+                 case -1:
+                     return -1;
+                 default:
+                     return 0;
+             }
+             return 0;
+         });
+         
+         var gatorJaw = inputSeries.deflate(row => row.medianPrice).sma(13);
+         var gatorTeeth = inputSeries.deflate(row => row.medianPrice).sma(8);
+         var gatorLips = inputSeries.deflate(row => row.medianPrice).sma(5);
+         inputSeries = inputSeries.withSeries({
+            fractal: fractal,
+            gatorJaw: gatorJaw,
+             gatorTeeth: gatorTeeth,
+             gatorLips: gatorLips,
+         });
+         
+         gatorJaw = inputSeries.deflate((row,index) => {
+            return inputSeries.endAt(row.time).tail(8+1).first().gatorJaw;
+        });
+         gatorTeeth = inputSeries.deflate((row,index) => {
+            return inputSeries.endAt(row.time).tail(5+1).first().gatorTeeth;
+        });
+         gatorLips = inputSeries.deflate((row,index) => {
+             return inputSeries.endAt(row.time).tail(3+1).first().gatorLips;
+            });
+         
+         inputSeries = inputSeries.withSeries({
+             direction: direction,
+             gatorJaw: gatorJaw,
+             gatorTeeth: gatorTeeth,
+             gatorLips: gatorLips,
+             fractal: fractal,
+             extrema: extrema,
+             medianPrice: medianPrice
+         }); 
 
         return inputSeries;
     }
 };
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var chai_1 = require("chai");
+var data_forge_1 = require("data-forge");
+function smma(period) {
+    chai_1.assert.isNumber(period, "Expected 'period' parameter to 'Series.smma' to be a number that specifies the time period of the moving average.");
+    
+    return this.rollingWindow(period)
+        .select(function (window) { 
+            var previous = window.last().close;
+            if (window.head(period-1).last().smma !== undefined) {
+                previous = window.head(period-1).last().smma
+            }
+            return [window.getIndex().last(), (window.sum() - previous) / period]; })
+        .withIndex(function (pair) { return pair[0]; })
+        .select(function (pair) { return pair[1]; });
+
+}
+data_forge_1.Series.prototype.smma = smma;
+//# sourceMappingURL=smma.js.map

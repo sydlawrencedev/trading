@@ -331,8 +331,16 @@ portfolio.openTrade = function(stock, time, price, info) {
     }
     this.spendings[stock] += cashToSpend;
 
+    
+    
+    var trade = new Trade(time, stock, quantity, price, info);
+    this.cash = this.cash - cashToSpend;
+    if (this.holdings[stock] == undefined) {
+        this.holdings[stock] = [];
+    }
     logger.alert([
         chalk.green("BUY "),
+        Math.round(this.cash),
         stock,
         Math.round(quantity),
         Math.round(price)+"     ",
@@ -340,12 +348,6 @@ portfolio.openTrade = function(stock, time, price, info) {
         info.buySignal,
         info.buyReason
     ], moment(time));
-    
-    var trade = new Trade(time, stock, quantity, price, info);
-    this.cash = this.cash - cashToSpend;
-    if (this.holdings[stock] == undefined) {
-        this.holdings[stock] = [];
-    }
     this.holdings[stock].push(trade);
 }
 
@@ -389,7 +391,7 @@ portfolio.closeAll = function(stock, details, trade = false) {
             if (portfolio.sellStock !== undefined) {
                 portfolio.sellStock(stock, trade.quantity);
             }
-            trade.exitPosition(details.time, details.price, details.info, details.reason, this.strategies[0].stopLoss);
+            trade.exitPosition(details.time, details.price, details.info, details.reason, this.strategies[0].stopLossPct);
             if (this.takings[stock] == undefined) {
                 this.takings[stock] = 0;
                 this.wins[stock] = [];
@@ -407,8 +409,10 @@ portfolio.closeAll = function(stock, details, trade = false) {
             this.takings[stock] += total;
             
             
+            this.cash = this.cash * 1 + total
             logger.alert([
                 chalk.green("SELL"),
+                Math.round(this.cash),
                 stock,
                 chalk.colorize(
                     trade.data.profit,
@@ -424,7 +428,6 @@ portfolio.closeAll = function(stock, details, trade = false) {
                 "Entry: "+moment(trade.data.entry.time).format("DD/MM/YYYY HH:mm:ss")
             ], moment(details.time));
 
-            this.cash = this.cash * 1 + total
             this.completedTrades.push(trade);
             this.holdings[stock][i] = null;
         } else if (!didNotSellAtALoss) {
