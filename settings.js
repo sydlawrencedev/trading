@@ -7,7 +7,7 @@ if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
     verbose = true;
 }
 
-stocks = "syd";
+stocks = "crypto";
 strategy = "test";
 
 // stocks = "watch";
@@ -32,20 +32,20 @@ settings = {
     alphavantagekey: keys.alphavantage.key,
     alpaca: keys.alpaca,
     supportPartialShares: false,
-    analyze: false,
+    analyze: true,
     startingCapital: 100000,
     verbose: verbose, //verbose,
     tradingTimeout: 1 * 60 * 1000,
-    timeframe: "daily", // daily, minute
-    interval: false, // 1min, 5min, 15min, 30min, 60min, false if daily
+    timeframe: "minute", // daily, minute
+    interval: "1min", // 1min, 5min, 15min, 30min, 60min, false if daily
     tradingStart: "2021-01-04 00:00:00", 
     timeWindow: {
         start: "2021-01-04 00:00:00", 
         start: "2020-01-01 00:00:00",
         end: "2020-12-01 00:00:00",
 
-        start: "2020-01-01 00:00:00",
-        end: "2020-12-31 00:00:00",
+        start: "2020-04-19 11:45:00",
+        end: "2020-04-19 20:46:46",
         // start: false // use all available data
     },
     thresholds: {

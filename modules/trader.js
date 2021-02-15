@@ -23,10 +23,10 @@ const alpaca = new Alpaca({
 const dataForge = require('data-forge');
 require('data-forge-fs'); // For loading files.
 require('data-forge-indicators'); // For the moving average indicator.
-require('data-forge-plot'); // Extends Data-Forge with the 'plot' function.
-require('@data-forge-plot/render');
+// require('data-forge-plot'); // Extends Data-Forge with the 'plot' function.
+// require('@data-forge-plot/render');
 
-const { plot } = require('plot');
+// const { plot } = require('plot');
 
 
 
@@ -369,7 +369,6 @@ trader.getSingleHodl = async function(ticker, startTime = settings.timeWindow.st
         if (start.count() > 0) {
             
             start = start.first().close
-            console.log(start);
         } else {
             start = undefined;
         }
@@ -417,10 +416,11 @@ trader.addStock = async function(ticker, data) {
         logger.error([ticker, "No data found"])
         return;
     }
-    logger.setup([ticker, "Historical data found"])
+    logger.setup([ticker, "Historical data found", data.count()])
 
     for (var i = 0; i < this.strategies.length; i++) {
         var strategy = this.strategies[i];
+
         logger.setup([ticker, "Adding indicators"])
         data = this.strategies[i].addIndicators(data);
 

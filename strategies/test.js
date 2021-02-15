@@ -109,6 +109,7 @@ module.exports = {
        
          const extrema = inputSeries.deflate(row => row.close).extrema();
          const medianPrice = inputSeries.deflate(row => (row.high + row.low) / 2);
+         logger.setup("Adding extrema & median price")
          inputSeries = inputSeries.withSeries({
              extrema: extrema,
              medianPrice: medianPrice
@@ -125,6 +126,7 @@ module.exports = {
              }
              return 0;
          });
+         logger.setup("Adding williams fractal")
          
          var gatorJaw = inputSeries.deflate(row => row.medianPrice).sma(13);
          var gatorTeeth = inputSeries.deflate(row => row.medianPrice).sma(8);
@@ -135,7 +137,7 @@ module.exports = {
              gatorTeeth: gatorTeeth,
              gatorLips: gatorLips,
          });
-         
+        //  console.log(inputSeries.asArray().length);
          gatorJaw = inputSeries.deflate((row,index) => {
             return inputSeries.endAt(row.time).tail(8+1).first().gatorJaw;
         });
@@ -145,7 +147,8 @@ module.exports = {
          gatorLips = inputSeries.deflate((row,index) => {
              return inputSeries.endAt(row.time).tail(3+1).first().gatorLips;
             });
-         
+        logger.setup("Adding williams gator")
+      
          inputSeries = inputSeries.withSeries({
              direction: direction,
              gatorJaw: gatorJaw,
@@ -180,6 +183,7 @@ module.exports = {
             }
             return changed;
         });
+        logger.setup("Adding gator crosses")
 
         inputSeries = inputSeries.withSeries({
             gatorChange: gatorChange
@@ -192,6 +196,7 @@ module.exports = {
 Object.defineProperty(exports, "__esModule", { value: true });
 var chai_1 = require("chai");
 var data_forge_1 = require("data-forge");
+const logger = require("../modules/logger");
 function smma(period) {
     chai_1.assert.isNumber(period, "Expected 'period' parameter to 'Series.smma' to be a number that specifies the time period of the moving average.");
     

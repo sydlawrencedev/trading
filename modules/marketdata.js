@@ -103,11 +103,9 @@ var  MarketData = {
                 return x;
             }
 
-            
             df = dataForge.readFileSync(filename)
                 .parseCSV()
                 .parseDates("timestamp", dateFormat);
-    
             // if (df.getSeries("timestamp").count() < 3) {
             //     await fs.unlinkSync("data/"+this.filename(stockTicker,timeframe,interval)+".csv");
             //     // x = await MarketData.fetchHistoricSingle(stockTicker, timeframe, interval);
