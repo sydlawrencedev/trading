@@ -6,7 +6,7 @@ module.exports = {
     name: "H3ka v0.5",
     limitOrder: 1000.15, // no acceptable limit order
     stopLossPct: -0.1, // stop loss at 10%
-    acceptableLoss: -0.05, // accept no loss aside from stop loss
+    acceptableLoss: -0.05, // accept mac of 5% loss aside from stop loss
     maxHoldings: 20,
     maxOpenPerTicker: 30000000,
     maxHolding: 0.8, // max holding 20% of the portfolio
