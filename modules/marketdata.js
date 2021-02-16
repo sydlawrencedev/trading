@@ -9,6 +9,16 @@ const dataForge = require('data-forge');
 require('data-forge-fs'); // For loading files.
 require('data-forge-indicators'); // For the moving average indicator.
 
+const Alpaca = require('@alpacahq/alpaca-trade-api')
+
+process.env.APCA_API_KEY_ID = settings.alpaca.key;
+process.env.APCA_API_SECRET_KEY = settings.alpaca.secret;
+process.env.APCA_API_BASE_URL = settings.alpaca.endpoint;
+
+const alpaca = new Alpaca({
+    usePolygon: false
+});
+
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }

@@ -6,12 +6,19 @@ var Trade = require('./trade');
 const moment = require('moment');
 const tickers = require('./tickers');
 const logger = require('./logger');
+var { count } = require("console");
 
-const Alpaca = require('@alpacahq/alpaca-trade-api');
-const { count } = require("console");
+var Alpaca = require('@alpacahq/alpaca-trade-api');
 
+
+
+process.env.APCA_API_KEY_ID = settings.alpaca.key;
+process.env.APCA_API_SECRET_KEY = settings.alpaca.secret;
+process.env.APCA_API_BASE_URL = settings.alpaca.endpoint;
+
+var alpaca;
 try {
-    const alpaca = new Alpaca({
+    alpaca = new Alpaca({
         usePolygon: false
     });
 } catch (e) {}
@@ -258,14 +265,15 @@ portfolio.updateFromAlpaca = function(account, holdings, checkIfWatched = false)
                     // var symbol = response.keys()[0]; 
                     // console.log(response);
                     
-                }).catch(e => 
+                }).catch(e => {
+                    console.log(e);
                     logger.error([
                         "ERROR",
                         "Failed to get market data from alpaca",
                         e.error,
                         e.message
                     ]) 
-                );
+                });
                 
             }
         })(index)

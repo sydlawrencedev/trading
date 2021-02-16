@@ -7,7 +7,7 @@ if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
     verbose = true;
 }
 
-stocks = "crypto";
+stocks = "autodd";
 strategy = "test";
 
 // stocks = "watch";

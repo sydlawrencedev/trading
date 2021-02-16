@@ -11,13 +11,13 @@ var myCache = cache();
 var Table = require('easy-table');
 
 
-const Alpaca = require('@alpacahq/alpaca-trade-api')
+var Alpaca = require('@alpacahq/alpaca-trade-api')
 
 process.env.APCA_API_KEY_ID = settings.alpaca.key;
 process.env.APCA_API_SECRET_KEY = settings.alpaca.secret;
 process.env.APCA_API_BASE_URL = settings.alpaca.endpoint;
 
-const alpaca = new Alpaca({
+var alpaca = new Alpaca({
     usePolygon: false
 });
 const dataForge = require('data-forge');
