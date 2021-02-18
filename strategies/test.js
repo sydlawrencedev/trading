@@ -40,9 +40,7 @@ module.exports = {
             throw new Error("Already at max "+info.ticker+ " x"+this.maxOpenPerTicker+"");
         }
         
-        if (openTrades && this.maxTradesOpen - openTrades.length <= 1) {
-            return totalCash;
-        }
+        
         var perTrade = totalCash / (this.maxTradesOpen - openTrades.length );
         if (tradedBefore) {
             perTrade = totalCash / (this.maxTradesOpen - openTrades.length + 3 );
@@ -159,6 +157,7 @@ module.exports = {
             //  momentum: momentum,
              medianPrice: medianPrice
          }).bake(); 
+         logger.setup("Adding gator crosses")
 
         gatorChange = inputSeries.deflate((row,index) => {
             var prev = inputSeries.endAt(row.time).tail(2).first();
@@ -183,7 +182,6 @@ module.exports = {
             }
             return changed;
         });
-        logger.setup("Adding gator crosses")
 
         inputSeries = inputSeries.withSeries({
             gatorChange: gatorChange
