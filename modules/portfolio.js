@@ -135,6 +135,7 @@ portfolio.logStatus = async function(time = settings.timeWindow.start) {
         return nums.reduce((a, b) => (a + b)) / nums.length;
     }
     var hodlAverageText = "HODL: N/A";
+    var hodlAverage = 0;
     if (Object.values(hodl).length > 0) {
         hodlAverage = average(Object.values(hodl))
         hodlAverageText = chalk.colorize(roi , hodlAverage, "HODL: "+(hodlAverage*100).toFixed(2)+"%");
@@ -190,11 +191,12 @@ portfolio.logStatus = async function(time = settings.timeWindow.start) {
     for (var i in obj) {
         params.push(i+"="+obj[i]);
     }
+    // try {
+    // var url = "https://hook.integromat.com/rqpl6bxa21vqm1ki6kodi8gh7arwr3qj?"+params.join("&");
+    // const https = require("https");
 
-    var url = "https://hook.integromat.com/rqpl6bxa21vqm1ki6kodi8gh7arwr3qj?"+params.join("&");
-    const https = require("https");
-
-    https.get(url, response => {});
+    // https.get(url, response => {});
+    // } catch (e) {}
 }
 
 portfolio.uniqueOpenTrades = function() {
