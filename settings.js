@@ -6,11 +6,11 @@ if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
     verbose = true;
 }
 
-var stocks = "syd";
-var strategy = "base";
+var stocks = "watch";
+var strategy = "test";
 var timeWindow = {
-    start: "2020-09-01 00:00:00",
-    end: "2020-12-01 00:00:00",
+    start: "2020-01-01 00:00:00",
+    end: "2020-12-31 00:00:00",
 };
 
 if (process.argv[2] == "-cli") {
@@ -31,7 +31,7 @@ settings = {
     comparisons: ["h3ka"],
     alphavantagekey: keys.alphavantage.key,
     alpaca: keys.alpaca,
-    analyze: true,
+    analyze: false,
     coinApiKey: keys.coinAPI.key,
     supportPartialShares: true,
     startingCapital: 100000,
