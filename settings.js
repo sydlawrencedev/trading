@@ -7,10 +7,8 @@ if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
 }
 
 stocks = "autodd";
-strategy = "test";
+strategy = "base";
 stocks = "syd";
-
-// stocks = "watch";
 
 if (process.argv[2] == "-cli") {
     if (process.argv[3] !== undefined) {
@@ -20,8 +18,7 @@ if (process.argv[2] == "-cli") {
         }
     }
 }
-// stocks = "june2020undervalued";
-// stocks = "bear";
+
 settings = {
     stockFile: stocks,
     stocks: stocks,
@@ -41,16 +38,8 @@ settings = {
     interval: false, // 1min, 5min, 15min, 30min, 60min, false if daily
     tradingStart: "2021-01-04 00:00:00",
     timeWindow: {
-        start: "2021-01-04 00:00:00",
-        start: "2020-01-01 00:00:00",
-        end: "2020-12-01 00:00:00",
-
-        start: "2021-01-04 11:45:00",
-        end: "2021-04-19 20:46:46",
-        // start: false // use all available data
-        start: "2020-01-01 00:00:00",
-        end: "2020-12-01 00:00:00",
         start: "2020-09-01 00:00:00",
+        end: "2020-12-01 00:00:00",
     },
     thresholds: {
         buy: 0,
