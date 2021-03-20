@@ -9,7 +9,7 @@ module.exports = {
     acceptableLoss: -0.05, // accept mac of 5% loss aside from stop loss
     maxHoldings: 20,
     maxOpenPerTicker: 30000000,
-    maxHolding: 0.8, // max holding 20% of the portfolio
+    maxHolding: 0.8, // max holding 80% of the portfolio
     buySignalCashWeighting: 50,
     secondPurchaseStockWeighting: 0.5,
     firstPurchaseStockWeighting: 0.1,
@@ -110,10 +110,9 @@ module.exports = {
         logger.setup("Adding extrema & median price")
         inputSeries = inputSeries.withSeries({
             extrema: extrema,
-            medianPrice: medianPrice
+            medianPrice: medianPrice,
+            direction: direction
         });
-
-
 
         return inputSeries;
     }
