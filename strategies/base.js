@@ -15,6 +15,7 @@ module.exports = {
     firstPurchaseStockWeighting: 0.1,
     maxBuyMoreProfit: 0.90,
     maxBuyMoreLoss: -0.05,
+    occasionalYolo: false,
     amountToSpend: function(info, totalCash, openTrades = [], openTradesSameTicker = [], allHoldings = {}, portfolio) {
         this.maxTradesOpen = Math.min(this.maxHoldings, tickers.active.length);
         this.maxTradesOpen = Math.ceil(tickers.active.length / 2);
@@ -43,8 +44,8 @@ module.exports = {
         var perTrade = totalCash / (this.maxTradesOpen - openTrades.length);
 
         var currentValue = portfolio.currentValue();
-        if (!isFinite(perTrade)) {
-            perTrade = currentValue / this.maxTradesOpen;
+        if (!this.occasionalYolo && !isFinite(perTrade)) {
+            perTrade = currentPortfolioValue / this.maxTradesOpen;
         }
         if (tradedBefore) {
             perTrade = totalCash / (this.maxTradesOpen - openTrades.length + 3);
