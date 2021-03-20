@@ -8,20 +8,27 @@ var logger = require('./logger');
 var portfolio = require('./portfolio');
 var cache = require('persistent-cache');
 var myCache = cache();
+var Table = require('easy-table');
 
 
-const Alpaca = require('@alpacahq/alpaca-trade-api')
+var Alpaca = require('@alpacahq/alpaca-trade-api')
 
 process.env.APCA_API_KEY_ID = settings.alpaca.key;
 process.env.APCA_API_SECRET_KEY = settings.alpaca.secret;
 process.env.APCA_API_BASE_URL = settings.alpaca.endpoint;
 
-const alpaca = new Alpaca({
+var alpaca = new Alpaca({
     usePolygon: false
 });
 const dataForge = require('data-forge');
 require('data-forge-fs'); // For loading files.
 require('data-forge-indicators'); // For the moving average indicator.
+// require('data-forge-plot'); // Extends Data-Forge with the 'plot' function.
+// require('@data-forge-plot/render');
+
+// const { plot } = require('plot');
+
+
 
 var supportPartialShares = settings.supportPartialShares;
 
@@ -119,8 +126,8 @@ trader.determineTrades = async function(andThenPerformTrades = false) {
                 }
                 var strategy = this.strategies[0];
 
-                if (isNowHolding && strategy.stopLoss !== undefined) {
-                    if (((row.open - previousBuyInPrice) / previousBuyInPrice) <= strategy.stopLoss) {
+                if (isNowHolding && strategy.stopLossPct !== undefined) {
+                    if (((row.open - previousBuyInPrice) / previousBuyInPrice) <= strategy.stopLossPct) {
                         stopLoss = Math.round((row.open - previousBuyInPrice) / previousBuyInPrice * 1000)/10 + "%";
                     }
                 }
@@ -141,6 +148,11 @@ trader.determineTrades = async function(andThenPerformTrades = false) {
             }).setIndex("time");
 
             stockData = stockData.withSeries({
+                sma: stockData => stockData.select(row => (row.sma) ? row.sma : row.close),
+                smma: stockData => stockData.select(row => (row.smma) ? row.smma : row.close),
+                gatorJaw: stockData => stockData.select(row => (row.gatorJaw) ? row.gatorJaw : row.close),
+                gatorTeeth: stockData => stockData.select(row => (row.gatorTeeth) ? row.gatorTeeth : row.close),
+                gatorLips: stockData => stockData.select(row => (row.gatorLips) ? row.gatorLips : row.close),
                 boughtShares: stockData => stockData.select(row => (row.buyInMoment) ? (supportPartialShares) ? row.buyInAmount / row.close : Math.floor(row.buyInAmount / row.close) : 0),
                 previousBuyInPrice: holdings.deflate(row => row.previousBuyInPrice),
                 stopLoss: holdings.deflate(row => row.stopLoss),
@@ -155,7 +167,18 @@ trader.determineTrades = async function(andThenPerformTrades = false) {
             }
 
             logger.setup([i,tradesData.count() + " possible trades"]);
+
+            if (settings.analyze) {
+                renderData = stockData.subset(["time", "close","fractal", "gatorJaw", "gatorTeeth", "gatorLips", "gatorChange"]);
+
+                await renderData.plot({},{
+                    y: ["close", "gatorJaw", "gatorTeeth", "gatorLips", "gatorChange"],
+                    // y2: ["fractal"]
+                }).renderImage("./output/"+i+".png");
+                await renderData.asCSV().writeFile("./output/"+i+'.csv');
+            }
             
+
             combinedStockData[i] = stockData;
         } catch (e) {
             logger.error([
@@ -163,7 +186,6 @@ trader.determineTrades = async function(andThenPerformTrades = false) {
                 i,
                 e.message
             ]);
-
         }
     }    
 
@@ -183,6 +205,98 @@ trader.determineTrades = async function(andThenPerformTrades = false) {
     return combinedTrades;
 }
 
+trader.performAnalysis = function(combinedStockData, combinedTrades) {
+    const { monteCarlo, analyze, ITrade, backtest, computeEquityCurve } = require('grademark');
+
+    this.strategies[0].entryRule = function(enterPosition, args) {
+        var signal = this.buySignal(args.bar);
+        if (signal.signal > 0) {
+            enterPosition()
+        }
+    }
+    this.strategies[0].exitRule = function(exitPosition, args) {
+        var signal = this.sellSignal(args.bar);
+        if (signal.signal > 0) {
+            return exitPosition();
+        }
+    }
+    this.strategies[0].stopLoss = function(args) { // Intrabar stop loss.
+        return args.entryPrice * this.stopLossPct * -1; // Stop out on 5% loss from entry price.
+    }
+    for (var ticker in combinedStockData) {
+        var trades = backtest(this.strategies[0], combinedStockData[ticker])
+
+
+        const samples = monteCarlo(trades, 1000, 50);
+        logger.status([ticker, `Did monte carlo simulation with ${samples.length} iterations`])
+
+        var analysis = samples.map(sample => analyze(settings.startingCapital, sample));
+        const profit = new dataForge.Series(analysis.map(row => row.profitPct));
+        analysis = analyze(settings.startingCapital, trades);
+        const analysisTable = new Table();
+
+        for (const key of Object.keys(analysis)) {
+            analysisTable.cell("Metric", key);
+            analysisTable.cell("Value", analysis[key]);
+            analysisTable.newRow();
+        }
+
+        console.log(analysisTable.toString());
+        logger.status([ticker,`Best profit is ${Math.round(profit.max())}%`])
+        logger.status([ticker,`Average profit is ${Math.round(profit.average())}%`])
+        logger.status([ticker,`Worst profit is ${Math.round(profit.min())}%`])
+
+        var ownedShares = {};
+        var capitalHolds = {};
+        let workingCapital = settings.startingCapital;
+        var startingShares = settings.startingCapital / combinedStockData[ticker].first().close
+        for (const trade of portfolio.completedTrades) {
+            ownedShares[trade.entryTime] = trade.quantity;
+            ownedShares[trade.data.exit.time] = 0;
+            workingCapital *= 1 + trade.data.growth;
+            capitalHolds[trade.exitTime] = workingCapital;
+        }
+
+        // equityCurve = new dataForge.DataFrame(equityCurve);
+        // equityCurve.setIndex("time");
+        
+        var data = [];
+        var lastOwned = 0;
+        var lastEquity = settings.startingCapital;
+        combinedStockData[ticker].forEach(stockData => {
+            owned = lastOwned;
+            if (ownedShares[stockData.time] !== undefined) {
+                owned = ownedShares[stockData.time];
+                lastOwned = owned
+            }
+            equity = lastEquity;
+            if (owned > 0) {
+                equity = stockData.close * owned;
+                lastEquity = equity;
+            } else if (capitalHolds[stockData.time]) {
+                lastEquity = capitalHolds[stockData.time];
+                equity = lastEquity;
+            }
+
+            data.push({
+                time: stockData.time,
+                hodl: stockData.close * startingShares,
+                traded: equity
+            })
+        })
+      
+        equityCurve = new dataForge.DataFrame(data);
+        equityCurve.setIndex("time");
+        const equityCurveOutputFilePath = "./output/"+ticker+"-equity.png";
+        equityCurve.plot({},{
+            y: ["hodl", "traded"], x: ["time"]
+        }).renderImage(equityCurveOutputFilePath);
+
+        console.log(">> " + equityCurveOutputFilePath);
+
+    }
+}
+
 trader.performTrades = function(combinedStockData, combinedTrades) {
 
     logger.status("Performing trades");
@@ -190,8 +304,10 @@ trader.performTrades = function(combinedStockData, combinedTrades) {
     for (const trade of combinedTrades) {
         if (trade.sellOut || trade.stopLoss || trade.limitOrder) {
             var reason = trade.sellReason;
+            var force = false;
             if (trade.stopLoss) {
                 reason = "Stop loss: " + trade.stopLoss;
+                force = true;
             }
             if (trade.limitOrder) {
                 reason = "Limit order: " + trade.limitOrder;
@@ -200,16 +316,24 @@ trader.performTrades = function(combinedStockData, combinedTrades) {
                 time: trade.time,
                 price: trade.open,
                 info: trade,
-                reason: reason
+                reason: reason,
+                force: force
             });
         } else if (trade.buyIn) {
             portfolio.openTrade(trade.ticker, trade.time, trade.close, trade);
         }
     } 
 
+    if (settings.analyze) {
+        this.performAnalysis(combinedStockData, combinedTrades);
+    } else {
+        console.log("no analusis");
+    }
+
+    // display.plot(profit.toArray(), { chartType: "bar" });
     for (i in this.stocks) {
         
-        if (portfolio.holdings[i] !== undefined) {
+        if (portfolio.holdings[i] !== undefined && combinedStockData[i] !== undefined) {
             for (var j = 0; j < portfolio.holdings[i].length; j++) {
                 if (portfolio.holdings[i][j] !== undefined) {
                     portfolio.holdings[i][j].currentValue(combinedStockData[i].last())
@@ -228,7 +352,7 @@ trader.performTrades = function(combinedStockData, combinedTrades) {
 
 trader.getSingleHodl = async function(ticker, startTime = settings.timeWindow.start, endTime = settings.timeWindow.end) {
     
-    var cachebust = 4;
+    var cachebust = 7;
     var cacheKey = "hodl_"+ticker+"_"+startTime+"_"+endTime+"_"+cachebust;
 
     var hodl = myCache.getSync(cacheKey); //{ color: 'red' }
@@ -243,20 +367,21 @@ trader.getSingleHodl = async function(ticker, startTime = settings.timeWindow.st
         close = data.last().close
         start = data.where(row => row.time >= moment(startTime));
         if (start.count() > 0) {
-            start = start.first().close;
+            
+            start = start.first().close
         } else {
             start = undefined;
         }
     }
     if (start == undefined) {
-        var startBars = await alpaca.getBars( 'day', ticker, { limit: 2, end: moment(startTime).format()})
+        var startBars = await alpaca.getBars( 'day', ticker, { limit: 5, end: moment(startTime).format()})
         if (startBars[ticker].length == 0) {
-            startBars = await alpaca.getBars( 'day', ticker, { limit: 2, after: moment(startTime).format()})
+            startBars = await alpaca.getBars( 'day', ticker, { limit: 5, after: moment(startTime).format()})
         }
         if (startBars[ticker].length == 0) {
             start = 1;
         } else {
-            start = startBars[ticker][0].closePrice;
+            start = (startBars[ticker][0].closePrice + startBars[ticker][1].closePrice + startBars[ticker][2].closePrice) / 3;
         }
     }
     if (close == undefined) {
@@ -293,12 +418,15 @@ trader.addStock = async function(ticker, data) {
         logger.error([ticker, "No data found"])
         return;
     }
-    logger.setup([ticker, "Historical data found"])
+    logger.setup([ticker, "Historical data found", data.count()])
 
     for (var i = 0; i < this.strategies.length; i++) {
         var strategy = this.strategies[i];
+
         logger.setup([ticker, "Adding indicators"])
         data = this.strategies[i].addIndicators(data);
+
+
         logger.setup([ticker, "Added indicators"])
 
         var buyStr = "buySignal_"+strategy.name;
@@ -322,6 +450,10 @@ trader.addStock = async function(ticker, data) {
                 return strategy.sellSignal(row).reason
             })
         });
+
+
+
+
 
 
 

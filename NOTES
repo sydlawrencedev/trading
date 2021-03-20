@@ -11,3 +11,36 @@ https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=TSL
 
 
 https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=TSLA&outputsize=full&datatype=csv&apikey=0OV8QTDPW5IYCHSN
+
+
+
+Compare against DCA not HODL
+2000 bubble - AMZN
+
+Different strategies for black swans
+
+monte carlo simulations
+
+Bill Williams Fractal Strategy
+
+Fractal Aligator System
+
+vwap, bollinger bands
+
+2000 bubble - AMZN
+2008
+2015
+
+
+Each trade should have a:
+- target price
+- stop loss
+
+Stop loss = when your hypothesis is proven to be incorrect
+    with extrema, when it goes below the previous low
+    
+Risk = the stop loss
+
+METRICS REQUIRED:
+R = reward / risk
+Win rate = win trades % total trades * 100

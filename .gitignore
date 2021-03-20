@@ -61,5 +61,7 @@ typings/
 .next
 *.bak
 .keys.js
-.keys
+
 cache
+output/*
+

@@ -6,11 +6,19 @@ var Trade = require('./trade');
 const moment = require('moment');
 const tickers = require('./tickers');
 const logger = require('./logger');
+var { count } = require("console");
 
-const Alpaca = require('@alpacahq/alpaca-trade-api')
+var Alpaca = require('@alpacahq/alpaca-trade-api');
 
+
+
+process.env.APCA_API_KEY_ID = settings.alpaca.key;
+process.env.APCA_API_SECRET_KEY = settings.alpaca.secret;
+process.env.APCA_API_BASE_URL = settings.alpaca.endpoint;
+
+var alpaca;
 try {
-    const alpaca = new Alpaca({
+    alpaca = new Alpaca({
         usePolygon: false
     });
 } catch (e) {}
@@ -39,6 +47,8 @@ var portfolio = {
     takings: {},
     spendings: {},
     holdings: {},
+    wins: {},
+    losses: {},
     portfolioValue: startingCash
 }
 
@@ -47,6 +57,16 @@ portfolio.logProfits = async function(time = settings.timeWindow.start, end = se
     var profits = this.getProfits();
     var hodl = await this.getHODL(Object.keys(profits), time, end);
     for (var i in profits) {
+
+        var totalLosses = 0
+        var totalWins = 0
+        for (var j in this.wins[i]) {
+            totalWins += this.wins[i][j].trade.data.profit;
+        }
+        for (var j in this.losses[i]) {
+            totalLosses += this.losses[i][j].trade.data.profit;
+        }
+
         logger.log([
             "STOCK",
             i,
@@ -56,7 +76,8 @@ portfolio.logProfits = async function(time = settings.timeWindow.start, end = se
             "Out: $"+Math.round(this.spendings[i]),
             "In: $"+Math.round(this.takings[i]),
             "Diff: $"+Math.round(this.takings[i] - this.spendings[i]),
-
+            "Wins: "+this.wins[i].length + " ("+Math.round(totalWins)+")",
+            "Losses: "+this.losses[i].length + " ("+Math.round(totalLosses)+")",
         ]);
     }
 }
@@ -127,13 +148,39 @@ portfolio.logStatus = async function(time = settings.timeWindow.start) {
         "Range: "+chalk.yellow(settings.alpacaRange),
         "Trading start: "+chalk.yellow(moment(time).format("DD/MM/YY")),
     ])
+    var wins = 0;
+    var losses = 0;
+    var rmultiples = [];
+    for (var i in this.wins) {
+        wins += this.wins[i].length;
+        for (var j = 0; j < this.wins[i].length; j++) {
+            rmultiples.push(this.wins[i][j].trade.rmultiple)
+        }
+    }
+
+    for (var i in this.losses) {
+        losses += this.losses[i].length;
+        for (var j = 0; j < this.losses[i].length; j++) {
+            rmultiples.push(this.losses[i][j].trade.rmultiple)
+        }
+    }
+
+    const sum = rmultiples.reduce((a, b) => a + b, 0);
+    const avg = (sum / rmultiples.length) || 0;
+
+    var winRatio = (wins / (wins + losses)) * 100 
+    var winLoss = (wins / losses) * 100 
     logger.log([
         "STATUS",
         chalk.colorize(roi,0,"ROI: "+ roi.toFixed(5)),
         chalk.colorize(roi,0,"Profit: "+(roi * 100).toFixed(2)+"%"),
+        
+        chalk.colorize(winRatio,50,"Win-rate: "+Math.round(winRatio)+"%"),
+        "Win-loss: "+Math.round(winLoss)+"%",
+        "R-multiple total: "+Math.round(sum*100)/100+"R, ave: "+Math.round(avg*100)/100+"R",
         hodlAverageText,
         "Portfolio: $"+Math.round(this.portfolioValue),
-        "Cash: $"+this.cash.toFixed(0),            
+        "Cash: $"+this.cash.toFixed(0),        
     ]);
     var params = [];
     var obj = {
@@ -220,14 +267,15 @@ portfolio.updateFromAlpaca = function(account, holdings, checkIfWatched = false)
                     // var symbol = response.keys()[0]; 
                     // console.log(response);
                     
-                }).catch(e => 
+                }).catch(e => {
+                    console.log(e);
                     logger.error([
                         "ERROR",
                         "Failed to get market data from alpaca",
                         e.error,
                         e.message
                     ]) 
-                );
+                });
                 
             }
         })(index)
@@ -293,8 +341,16 @@ portfolio.openTrade = function(stock, time, price, info) {
     }
     this.spendings[stock] += cashToSpend;
 
+    
+    
+    var trade = new Trade(time, stock, quantity, price, info);
+    this.cash = this.cash - cashToSpend;
+    if (this.holdings[stock] == undefined) {
+        this.holdings[stock] = [];
+    }
     logger.alert([
         chalk.green("BUY "),
+        Math.round(this.cash),
         stock,
         Math.round(quantity),
         Math.round(price)+"     ",
@@ -302,12 +358,6 @@ portfolio.openTrade = function(stock, time, price, info) {
         info.buySignal,
         info.buyReason
     ], moment(time));
-    
-    var trade = new Trade(time, stock, quantity, price, info);
-    this.cash = this.cash - cashToSpend;
-    if (this.holdings[stock] == undefined) {
-        this.holdings[stock] = [];
-    }
     this.holdings[stock].push(trade);
 }
 
@@ -351,17 +401,28 @@ portfolio.closeAll = function(stock, details, trade = false) {
             if (portfolio.sellStock !== undefined) {
                 portfolio.sellStock(stock, trade.quantity);
             }
-            trade.exitPosition(details.time, details.price, details.info, details.reason);
+            trade.exitPosition(details.time, details.price, details.info, details.reason, this.strategies[0].stopLossPct);
             if (this.takings[stock] == undefined) {
                 this.takings[stock] = 0;
+                this.wins[stock] = [];
+                this.losses[stock] = [];
             }
+            if (trade.data.profit > 0) {
+                this.wins[stock].push({trade: trade, details: details});
+            }
+            else {
+                this.losses[stock].push({trade: trade, details: details});
+            }            
 
             // if (details.force) {
             // }
             this.takings[stock] += total;
             
+            
+            this.cash = this.cash * 1 + total
             logger.alert([
                 chalk.green("SELL"),
+                Math.round(this.cash),
                 stock,
                 chalk.colorize(
                     trade.data.profit,
@@ -372,10 +433,11 @@ portfolio.closeAll = function(stock, details, trade = false) {
                 Math.round(total)+"  ",
                 details.info.sellSignal,
                 details.reason,
+                "R: $"+Math.round(trade.r),
+                "R-multiple: "+(Math.round(trade.rmultiple*100)/100)+"R",
                 "Entry: "+moment(trade.data.entry.time).format("DD/MM/YYYY HH:mm:ss")
             ], moment(details.time));
 
-            this.cash = this.cash * 1 + total
             this.completedTrades.push(trade);
             this.holdings[stock][i] = null;
         } else if (!didNotSellAtALoss) {

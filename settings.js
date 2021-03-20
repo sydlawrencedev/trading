@@ -5,7 +5,6 @@ var chalk = require("chalk");
 var verbose = false;
 if (process.argv[2] == "-verbose" || process.argv[1].indexOf("index") > -1) {
     verbose = true;
-    console.log(chalk.green("Running in verbose mode"));
 }
 
 stocks = "autodd";
@@ -32,21 +31,22 @@ settings = {
     comparisons: ["h3ka"],
     alphavantagekey: keys.alphavantage.key,
     alpaca: keys.alpaca,
+    analyze: true,
     coinApiKey: keys.coinAPI.key,
     supportPartialShares: true,
     startingCapital: 100000,
-    verbose: verbose,
+    verbose: verbose, //verbose,
     tradingTimeout: 1 * 60 * 1000,
     timeframe: "daily", // daily, minute
     interval: false, // 1min, 5min, 15min, 30min, 60min, false if daily
     tradingStart: "2021-01-04 00:00:00", 
     timeWindow: {
         start: "2021-01-04 00:00:00", 
-        start: "2018-01-01 00:00:00",
-        end: "2021-01-30 00:00:00",
+        start: "2020-01-01 00:00:00",
+        end: "2020-12-01 00:00:00",
 
-        // start: "2017-12-01 00:00:00",
-        // end: "2020-03-16 00:00:00",
+        start: "2021-01-04 11:45:00",
+        end: "2021-04-19 20:46:46",
         // start: false // use all available data
     },
     thresholds: {
@@ -54,6 +54,10 @@ settings = {
         sell: 0
     },
     cashBaseWeighting: 50
+}
+
+if (settings.verbose) {
+    console.log(chalk.green("Running in verbose mode"));
 }
 
 if (settings.timeframe == "daily") {

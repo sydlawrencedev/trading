@@ -15,6 +15,16 @@ const dataForge = require('data-forge');
 require('data-forge-fs'); // For loading files.
 require('data-forge-indicators'); // For the moving average indicator.
 
+const Alpaca = require('@alpacahq/alpaca-trade-api')
+
+process.env.APCA_API_KEY_ID = settings.alpaca.key;
+process.env.APCA_API_SECRET_KEY = settings.alpaca.secret;
+process.env.APCA_API_BASE_URL = settings.alpaca.endpoint;
+
+const alpaca = new Alpaca({
+    usePolygon: false
+});
+
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -109,6 +119,7 @@ var  MarketData = {
     },
     
     getHistoricSingle: async function(stockTicker, timeframe = "daily", interval = false) {
+
         var filename = process.mainModule.path+"/data/"+this.filename(stockTicker,timeframe,interval)+".csv";
         var df;
         try {
@@ -144,11 +155,9 @@ var  MarketData = {
                 return x;
             }
 
-            
             df = dataForge.readFileSync(filename)
                 .parseCSV()
                 .parseDates("timestamp", dateFormat);
-    
             // if (df.getSeries("timestamp").count() < 3) {
             //     await fs.unlinkSync("data/"+this.filename(stockTicker,timeframe,interval)+".csv");
             //     // x = await MarketData.fetchHistoricSingle(stockTicker, timeframe, interval);
@@ -179,6 +188,7 @@ var  MarketData = {
         if (df.count() == 0) {
             // console.log(x.toString());
             logger.error([stockTicker,"No data found for "+moment(settings.timeWindow.start) + " -> " + moment(settings.timeWindow.end)]);
+            // return this.fetchHistoricSingle(stockTicker, timeframe, interval);
         }
 
         return df;

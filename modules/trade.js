@@ -1,4 +1,4 @@
-
+var logger = require("./logger");
 class Trade {
     ticker = ""
     entryTime = 0
@@ -31,6 +31,9 @@ class Trade {
         this.data.profit = currentValue - startingValue;
         this.data.profitPct = this.data.profit / startingValue;
         this.data.growth = this.data.profitPct;
+        this.r = startingValue*-1*this.stopLoss;
+        this.rmultiple = this.data.profit / this.r;
+
         return this;
     };
 
@@ -60,9 +63,10 @@ class Trade {
         return this.ticker;
     }
 
-    exitPosition(time, price, info, reason) {
+    exitPosition(time, price, info, reason, stopLoss) {
         this.data.currentPrice = price;
         this.data.exitReason = reason;
+        this.stopLoss = stopLoss;
         this.data.exit = {
             time: time,
             price: price,
