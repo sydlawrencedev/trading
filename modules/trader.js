@@ -9,17 +9,9 @@ var portfolio = require('./portfolio');
 var cache = require('persistent-cache');
 var myCache = cache();
 var Table = require('easy-table');
+var broker = require("./broker")
 
 
-var Alpaca = require('@alpacahq/alpaca-trade-api')
-
-process.env.APCA_API_KEY_ID = settings.alpaca.key;
-process.env.APCA_API_SECRET_KEY = settings.alpaca.secret;
-process.env.APCA_API_BASE_URL = settings.alpaca.endpoint;
-
-var alpaca = new Alpaca({
-    usePolygon: false
-});
 const dataForge = require('data-forge');
 require('data-forge-fs'); // For loading files.
 require('data-forge-indicators'); // For the moving average indicator.
@@ -68,26 +60,24 @@ trader.determineTrades = async function(andThenPerformTrades = false) {
     for (i in this.stocks) {
         try {
             var stockData = this.stocks[i];
-            
+
             stockData = stockData.withSeries({
                 sellOut: stockData => stockData.select(row => (row.sellSignal > settings.thresholds.sell)),
                 buyIn: stockData => stockData.select(row => row.buySignal > settings.thresholds.buy)
             });
-    
+
             const buyInMoment = stockData.rollingWindow(2) // Group into lots of 7 (for 7 days).
                 .select(window => {
-                    return [ window.last().time, 
+                    return [window.last().time,
                         (window.last().isHolding && !window.first().isHolding) ? true : undefined
-                    ]; 
+                    ];
                 })
                 .withIndex(pair => pair[0]) // Promote index.
                 .select(pair => pair[1]); // Restore values.
 
             const sellOutMoment = stockData.window(2) // Group into lots of 7 (for 7 days).
                 .select(window => {
-                    return [ window.last().time, 
-                        !window.last().isHolding && window.first().isHolding ? true : undefined
-                    ]; 
+                    return [window.last().time, !window.last().isHolding && window.first().isHolding ? true : undefined];
                 })
                 .withIndex(pair => pair[0]) // Promote index.
                 .select(pair => pair[1]); // Restore values.
@@ -99,7 +89,7 @@ trader.determineTrades = async function(andThenPerformTrades = false) {
                 buyInAmount: stockData => stockData.select(row => (row.buyInMoment) ? trader.getBuyInValue(row.buySignal) : 0),
             });
 
-            
+
 
             var holdings = [];
             var boughtInPrices = [];
@@ -128,17 +118,17 @@ trader.determineTrades = async function(andThenPerformTrades = false) {
 
                 if (isNowHolding && strategy.stopLossPct !== undefined) {
                     if (((row.open - previousBuyInPrice) / previousBuyInPrice) <= strategy.stopLossPct) {
-                        stopLoss = Math.round((row.open - previousBuyInPrice) / previousBuyInPrice * 1000)/10 + "%";
+                        stopLoss = Math.round((row.open - previousBuyInPrice) / previousBuyInPrice * 1000) / 10 + "%";
                     }
                 }
 
                 if (isNowHolding && strategy.limitOrder !== undefined) {
                     if (((row.open - previousBuyInPrice) / previousBuyInPrice) >= strategy.limitOrder) {
-                        limitOrder = Math.round((row.open - previousBuyInPrice) / previousBuyInPrice * 1000)/10 + "%";
+                        limitOrder = Math.round((row.open - previousBuyInPrice) / previousBuyInPrice * 1000) / 10 + "%";
                     }
                 }
 
-                holdings.push({time: row.time, limitOrder:limitOrder, stopLoss: stopLoss, isHolding: isNowHolding, previousBuyInPrice: previousBuyInPrice});
+                holdings.push({ time: row.time, limitOrder: limitOrder, stopLoss: stopLoss, isHolding: isNowHolding, previousBuyInPrice: previousBuyInPrice });
                 previousRow = row;
                 previousHolding = isNowHolding;
                 // Do something with row.
@@ -161,23 +151,23 @@ trader.determineTrades = async function(andThenPerformTrades = false) {
             });
 
             var tradesData = stockData.where(row => (row.buyIn || (row.isHolding && row.sellOut) || (row.isHolding && row.stopLoss) || (row.isHolding && row.limitOrder)));
-            
+
             for (const trade of tradesData) {
                 combinedTrades.push(trade);
             }
 
-            logger.setup([i,tradesData.count() + " possible trades"]);
+            logger.setup([i, tradesData.count() + " possible trades"]);
 
             if (settings.analyze) {
-                renderData = stockData.subset(["time", "close","fractal", "gatorJaw", "gatorTeeth", "gatorLips", "gatorChange"]);
+                renderData = stockData.subset(["time", "close", "fractal", "gatorJaw", "gatorTeeth", "gatorLips", "gatorChange"]);
 
-                await renderData.plot({},{
+                await renderData.plot({}, {
                     y: ["close", "gatorJaw", "gatorTeeth", "gatorLips", "gatorChange"],
                     // y2: ["fractal"]
-                }).renderImage("./output/"+i+".png");
-                await renderData.asCSV().writeFile("./output/"+i+'.csv');
+                }).renderImage("./output/" + i + ".png");
+                await renderData.asCSV().writeFile("./output/" + i + '.csv');
             }
-            
+
 
             combinedStockData[i] = stockData;
         } catch (e) {
@@ -187,15 +177,15 @@ trader.determineTrades = async function(andThenPerformTrades = false) {
                 e.message
             ]);
         }
-    }    
+    }
 
     if (combinedTrades.length === 0) {
         logger.setup("no possible trades?");
     }
 
     // tradesData = tradesData.subset(["time", "buyIn", "isHolding", "sellOut", "open", "close"]);
-    combinedTrades = combinedTrades.sort((a,b) => { 
-        if (a.time == b.time) 
+    combinedTrades = combinedTrades.sort((a, b) => {
+        if (a.time == b.time)
             return (a.buySignal > b.buySignal) ? 1 : -1
         return a.time > b.time ? 1 : -1
     });
@@ -242,9 +232,9 @@ trader.performAnalysis = function(combinedStockData, combinedTrades) {
         }
 
         console.log(analysisTable.toString());
-        logger.status([ticker,`Best profit is ${Math.round(profit.max())}%`])
-        logger.status([ticker,`Average profit is ${Math.round(profit.average())}%`])
-        logger.status([ticker,`Worst profit is ${Math.round(profit.min())}%`])
+        logger.status([ticker, `Best profit is ${Math.round(profit.max())}%`])
+        logger.status([ticker, `Average profit is ${Math.round(profit.average())}%`])
+        logger.status([ticker, `Worst profit is ${Math.round(profit.min())}%`])
 
         var ownedShares = {};
         var capitalHolds = {};
@@ -259,7 +249,7 @@ trader.performAnalysis = function(combinedStockData, combinedTrades) {
 
         // equityCurve = new dataForge.DataFrame(equityCurve);
         // equityCurve.setIndex("time");
-        
+
         var data = [];
         var lastOwned = 0;
         var lastEquity = settings.startingCapital;
@@ -284,12 +274,13 @@ trader.performAnalysis = function(combinedStockData, combinedTrades) {
                 traded: equity
             })
         })
-      
+
         equityCurve = new dataForge.DataFrame(data);
         equityCurve.setIndex("time");
-        const equityCurveOutputFilePath = "./output/"+ticker+"-equity.png";
-        equityCurve.plot({},{
-            y: ["hodl", "traded"], x: ["time"]
+        const equityCurveOutputFilePath = "./output/" + ticker + "-equity.png";
+        equityCurve.plot({}, {
+            y: ["hodl", "traded"],
+            x: ["time"]
         }).renderImage(equityCurveOutputFilePath);
 
         console.log(">> " + equityCurveOutputFilePath);
@@ -300,7 +291,7 @@ trader.performAnalysis = function(combinedStockData, combinedTrades) {
 trader.performTrades = function(combinedStockData, combinedTrades) {
 
     logger.status("Performing trades");
-    
+
     for (const trade of combinedTrades) {
         if (trade.sellOut || trade.stopLoss || trade.limitOrder) {
             var reason = trade.sellReason;
@@ -322,7 +313,7 @@ trader.performTrades = function(combinedStockData, combinedTrades) {
         } else if (trade.buyIn) {
             portfolio.openTrade(trade.ticker, trade.time, trade.close, trade);
         }
-    } 
+    }
 
     if (settings.analyze) {
         this.performAnalysis(combinedStockData, combinedTrades);
@@ -332,7 +323,7 @@ trader.performTrades = function(combinedStockData, combinedTrades) {
 
     // display.plot(profit.toArray(), { chartType: "bar" });
     for (i in this.stocks) {
-        
+
         if (portfolio.holdings[i] !== undefined && combinedStockData[i] !== undefined) {
             for (var j = 0; j < portfolio.holdings[i].length; j++) {
                 if (portfolio.holdings[i][j] !== undefined) {
@@ -351,32 +342,32 @@ trader.performTrades = function(combinedStockData, combinedTrades) {
 }
 
 trader.getSingleHodl = async function(ticker, startTime = settings.timeWindow.start, endTime = settings.timeWindow.end) {
-    
+
     var cachebust = 7;
-    var cacheKey = "hodl_"+ticker+"_"+startTime+"_"+endTime+"_"+cachebust;
+    var cacheKey = "hodl_" + ticker + "_" + startTime + "_" + endTime + "_" + cachebust;
 
     var hodl = myCache.getSync(cacheKey); //{ color: 'red' }
 
     if (hodl && hodl != 0) {
         return hodl;
     }
-    
+
     var data = this.stocks[ticker];
     var close, start;
     if (data && data.count() > 0) {
         close = data.last().close
         start = data.where(row => row.time >= moment(startTime));
         if (start.count() > 0) {
-            
+
             start = start.first().close
         } else {
             start = undefined;
         }
     }
     if (start == undefined) {
-        var startBars = await alpaca.getBars( 'day', ticker, { limit: 5, end: moment(startTime).format()})
+        var startBars = await broker.getBars(ticker, { limit: 5, end: moment(startTime).format() })
         if (startBars[ticker].length == 0) {
-            startBars = await alpaca.getBars( 'day', ticker, { limit: 5, after: moment(startTime).format()})
+            startBars = await broker.getBars(ticker, { limit: 5, after: moment(startTime).format() })
         }
         if (startBars[ticker].length == 0) {
             start = 1;
@@ -385,19 +376,19 @@ trader.getSingleHodl = async function(ticker, startTime = settings.timeWindow.st
         }
     }
     if (close == undefined) {
-        var closeBars = await alpaca.getBars( 'day', ticker, { limit: 2, end: moment().format()})
+        var closeBars = await broker.getBars(ticker, { limit: 2, end: moment().format() })
         if (closeBars[ticker].length == 0) {
             close = 1;
         } else {
             close = closeBars[ticker][closeBars[ticker].length - 1].closePrice;
         }
     }
-    var resp = (close - start ) / start;
+    var resp = (close - start) / start;
     myCache.putSync(cacheKey, resp);
     return resp;
 }
 
-trader.portfolio.getHODL = trader.getHODL = async function(stocks, startTime = settings.timeWindow.start, end= settings.timeWindow.end) {
+trader.portfolio.getHODL = trader.getHODL = async function(stocks, startTime = settings.timeWindow.start, end = settings.timeWindow.end) {
     var hodl = {};
     for (var i = 0; i < stocks.length; i++) {
         try {
@@ -429,8 +420,8 @@ trader.addStock = async function(ticker, data) {
 
         logger.setup([ticker, "Added indicators"])
 
-        var buyStr = "buySignal_"+strategy.name;
-        var sellStr = "buySignal_"+strategy.name;
+        var buyStr = "buySignal_" + strategy.name;
+        var sellStr = "buySignal_" + strategy.name;
         if (this.strategies.length == 1) {
             buyStr = "buySignal";
             sellStr = "sellSignal";
@@ -466,7 +457,7 @@ trader.addStock = async function(ticker, data) {
 trader.addStrategyByName = function(strategyName) {
     this.strategies = [];
     this.portfolio.strategies = [];
-    var strategy = require("../strategies/"+strategyName);
+    var strategy = require("../strategies/" + strategyName);
     strategy.name = strategyName;
     this.strategies.push(strategy);
     this.portfolio.strategies.push(strategy);

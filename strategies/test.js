@@ -14,7 +14,7 @@ module.exports = {
     secondPurchaseStockWeighting: 0.5,
     firstPurchaseStockWeighting: 0.1,
     maxBuyMoreProfit: false, // never stop buying more in profit (can be a %)
-    maxBuyMoreLoss: -0.05,
+    maxBuyMoreLoss: false, // -0.05,
     occasionalYolo: false,
     amountToSpend: function(info, totalCash, openTrades = [], openTradesSameTicker = [], allHoldings = {}, portfolio) {
         this.maxTradesOpen = Math.min(this.maxHoldings, tickers.active.length);
@@ -25,7 +25,7 @@ module.exports = {
         for (var i = 0; i < openTradesSameTicker.length; i++) {
             totalHolding += openTradesSameTicker[i].currentValue({ close: info.close });
 
-            if (openTradesSameTicker[i].data.profit < this.maxBuyMoreLoss) {
+            if (this.maxBuyMoreLoss !== false && openTradesSameTicker[i].data.profit < this.maxBuyMoreLoss) {
                 throw new Error("Already at a loss with " + info.ticker + " (" + Math.round(openTradesSameTicker[i].data.profit) + ")");
             }
             if (this.maxBuyMoreProfit && openTradesSameTicker[i].data.profit > this.maxBuyMoreProfit) {
@@ -141,13 +141,13 @@ module.exports = {
         });
         //  console.log(inputSeries.asArray().length);
         gatorJaw = inputSeries.deflate((row, index) => {
-            return inputSeries.endAt(row.time).tail(8 + 1).first().gatorJaw;
+            return inputSeries.endAt(row.time).tail(8 + 2).first().gatorJaw;
         });
         gatorTeeth = inputSeries.deflate((row, index) => {
-            return inputSeries.endAt(row.time).tail(5 + 1).first().gatorTeeth;
+            return inputSeries.endAt(row.time).tail(5 + 2).first().gatorTeeth;
         });
         gatorLips = inputSeries.deflate((row, index) => {
-            return inputSeries.endAt(row.time).tail(3 + 1).first().gatorLips;
+            return inputSeries.endAt(row.time).tail(3 + 2).first().gatorLips;
         });
         logger.setup("Adding williams gator")
 

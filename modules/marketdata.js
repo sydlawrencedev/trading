@@ -1,5 +1,3 @@
-
-
 const CoinAPI = require('coinapi-io');
 const subHours = require('date-fns').subHours;
 
@@ -15,29 +13,21 @@ const dataForge = require('data-forge');
 require('data-forge-fs'); // For loading files.
 require('data-forge-indicators'); // For the moving average indicator.
 
-const Alpaca = require('@alpacahq/alpaca-trade-api')
-
-process.env.APCA_API_KEY_ID = settings.alpaca.key;
-process.env.APCA_API_SECRET_KEY = settings.alpaca.secret;
-process.env.APCA_API_BASE_URL = settings.alpaca.endpoint;
-
-const alpaca = new Alpaca({
-    usePolygon: false
-});
+var broker = require("./broker")
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-var  MarketData = {
+var MarketData = {
 
     filename: function(ticker, timeframe, interval, mode = "test") {
-        return ticker+"_"+timeframe+"_"+interval+"_"+mode;
+        return ticker + "_" + timeframe + "_" + interval + "_" + mode;
     },
 
     fetchHistoricSingle: async function(stockTicker, timeframe = "daily", interval = false) {
-        var filename = process.mainModule.path+"/data/"+this.filename(stockTicker,timeframe,interval)+".csv";
-        
+        var filename = process.mainModule.path + "/data/" + this.filename(stockTicker, timeframe, interval) + ".csv";
+
         var dataFunction = "TIME_SERIES_DAILY";
         switch (timeframe) {
             case "minute":
@@ -52,16 +42,16 @@ var  MarketData = {
             crypto = true;
         }
 
-        var url = "https://www.alphavantage.co/query?function="+dataFunction+"&symbol="+stockTicker+"&outputsize=full&datatype=csv&apikey="+settings.alphavantagekey;
-        
+        var url = "https://www.alphavantage.co/query?function=" + dataFunction + "&symbol=" + stockTicker + "&outputsize=full&datatype=csv&apikey=" + settings.alphavantagekey;
+
         if (interval) {
-            url += "&interval="+interval;
+            url += "&interval=" + interval;
         }
         var responseType = "stream";
         if (crypto) {
             responseType = "json"
-            ticker = stockTicker.replace("CRYPTO_","");
-            url = 'https://min-api.cryptocompare.com/data/histoday?aggregate=1&e=CCCAGG&extraParams=CryptoCompare&fsym='+ ticker.toUpperCase() +'&limit=2000&tryConversion=false&tsym=USD';
+            ticker = stockTicker.replace("CRYPTO_", "");
+            url = 'https://min-api.cryptocompare.com/data/histoday?aggregate=1&e=CCCAGG&extraParams=CryptoCompare&fsym=' + ticker.toUpperCase() + '&limit=2000&tryConversion=false&tsym=USD';
         }
         var response = await axios({
             method: "get",
@@ -69,12 +59,12 @@ var  MarketData = {
             responseType: responseType
         });
         if (response.status == 200) {
-            logger.success([stockTicker,"Downloaded historical stock data"]);
+            logger.success([stockTicker, "Downloaded historical stock data"]);
             try {
                 tickers.refetch();
                 await fs.unlinkSync(filename);
             } catch (e) {
-                
+
             }
             var dateFormat = "YYYY-MM-DD";
             switch (timeframe) {
@@ -86,10 +76,10 @@ var  MarketData = {
                 await fs.appendFileSync(filename, headers);
 
                 var rows = [];
-                for (var i  = 0; i < response.data.Data.length; i++) {
+                for (var i = 0; i < response.data.Data.length; i++) {
                     var row = response.data.Data[i];
                     rows.push([
-                        moment(row.time*1000).format(dateFormat),
+                        moment(row.time * 1000).format(dateFormat),
                         row.open,
                         row.high,
                         row.low,
@@ -99,15 +89,15 @@ var  MarketData = {
                 }
                 rows = rows.reverse();
 
-                for (var i  = 0; i < rows.length; i++) {
-                    await fs.appendFileSync(filename, rows[i]+"\n");
+                for (var i = 0; i < rows.length; i++) {
+                    await fs.appendFileSync(filename, rows[i] + "\n");
                 }
 
             } else {
                 await response.data.pipe(fs.createWriteStream(filename));
             }
             await sleep(10000);
-            var single = await this.getHistoricSingle(stockTicker,timeframe,interval);
+            var single = await this.getHistoricSingle(stockTicker, timeframe, interval);
             return single;
         } else {
             console.log(response);
@@ -117,10 +107,10 @@ var  MarketData = {
         }
         return df;
     },
-    
+
     getHistoricSingle: async function(stockTicker, timeframe = "daily", interval = false) {
 
-        var filename = process.mainModule.path+"/data/"+this.filename(stockTicker,timeframe,interval)+".csv";
+        var filename = process.mainModule.path + "/data/" + this.filename(stockTicker, timeframe, interval) + ".csv";
         var df;
         try {
             var dateFormat = "YYYY-MM-DD";
@@ -138,7 +128,7 @@ var  MarketData = {
                     if (f.toString()[0] === "{") {
                         var rsp = JSON.parse(f.toString());
                         if (rsp["Error Message"]) {
-                            logger.error([stockTicker,rsp["Error Message"]]);
+                            logger.error([stockTicker, rsp["Error Message"]]);
                             return false;
                         }
 
@@ -148,8 +138,8 @@ var  MarketData = {
                     await sleep(2);
                     return this.getHistoricSingle(stockTicker, timeframe, interval);
                 }
-            
-            // doesn't exist, go get it
+
+                // doesn't exist, go get it
             } else {
                 var x = await MarketData.fetchHistoricSingle(stockTicker, timeframe, interval);
                 return x;
@@ -164,7 +154,7 @@ var  MarketData = {
             //     // return x;
             // }
         } catch (e) {
-            
+
             console.log("error");
             console.log(e.message);
             console.log(e);
@@ -172,13 +162,13 @@ var  MarketData = {
             // x = await MarketData.fetchHistoricSingle(stockTicker, timeframe, interval);
             // return x;
         }
-          
+
         df = df.parseFloats(["open", "high", "low", "close", "volume"])
 
         df = df // Index so we can later merge on date.
             .reverse()
             .renameSeries({ timestamp: "time" }).setIndex("time");
-        
+
         var x = df;
         if (settings.timeWindow.start) {
             df = df.where(row => row.time >= moment(settings.timeWindow.start));
@@ -187,17 +177,17 @@ var  MarketData = {
 
         if (df.count() == 0) {
             // console.log(x.toString());
-            logger.error([stockTicker,"No data found for "+moment(settings.timeWindow.start) + " -> " + moment(settings.timeWindow.end)]);
+            logger.error([stockTicker, "No data found for " + moment(settings.timeWindow.start) + " -> " + moment(settings.timeWindow.end)]);
             // return this.fetchHistoricSingle(stockTicker, timeframe, interval);
         }
 
         return df;
     },
-    
-    getLiveData: async function(stocks, timeframe) {
-        return alpaca.getBars(
-            'minute',
-            stocks
+
+    getLiveData: async function(stocks, cb) {
+        return broker.getBars(
+            stocks,
+            cb
         );
     }
 

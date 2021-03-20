@@ -8,20 +8,7 @@ const tickers = require('./tickers');
 const logger = require('./logger');
 var { count } = require("console");
 
-var Alpaca = require('@alpacahq/alpaca-trade-api');
-
-
-
-process.env.APCA_API_KEY_ID = settings.alpaca.key;
-process.env.APCA_API_SECRET_KEY = settings.alpaca.secret;
-process.env.APCA_API_BASE_URL = settings.alpaca.endpoint;
-
-var alpaca;
-try {
-    alpaca = new Alpaca({
-        usePolygon: false
-    });
-} catch (e) {}
+var broker = require("./broker")
 
 chalk.colorize = function(val, base, str) {
     if (val * 1 > base * 1) {
@@ -37,7 +24,7 @@ var startingCash = settings.startingCapital;
 var portfolio = {
     cash: startingCash,
     startingCash: startingCash,
-    liveFromAlpaca: false,
+    liveFromBroker: false,
     strategies: [],
 
     getROI: function() {
@@ -146,7 +133,7 @@ portfolio.logStatus = async function(time = settings.timeWindow.start) {
         "STATUS",
         "Strategy: " + chalk.yellow(this.strategies[0].description),
         "Stocklist: " + chalk.yellow(settings.stockFile),
-        "Range: " + chalk.yellow(settings.alpacaRange),
+        "Range: " + chalk.yellow(settings.timeRange),
         "Trading start: " + chalk.yellow(moment(time).format("DD/MM/YY")),
     ])
     var wins = 0;
@@ -216,7 +203,7 @@ portfolio.currentValue = function() {
 }
 
 portfolio.calculate = function() {
-    if (this.liveFromAlpaca) {
+    if (this.liveFromBroker) {
         return;
     }
     this.portfolioValue = 0;
@@ -230,8 +217,8 @@ portfolio.calculate = function() {
     this.portfolioValue = this.portfolioValue.toFixed(2);
 }
 
-portfolio.updateFromAlpaca = function(account, holdings, checkIfWatched = false) {
-    this.liveFromAlpaca = true;
+portfolio.updateFromBroker = function(account, holdings, checkIfWatched = false) {
+    this.liveFromBroker = true;
     this.cash = account.cash * 1;
     this.portfolioValue = account.portfolio_value * 1;
 
@@ -251,32 +238,31 @@ portfolio.updateFromAlpaca = function(account, holdings, checkIfWatched = false)
             // if no longer in watchlist
             if (checkIfWatched && !tickers.isWatched(holding.symbol)) {
                 // attempt to sell holding
-                alpaca.getBars(
-                    settings.alpacaRange,
-                    holding.symbol
-                ).then(response => {
-                    for (var i in response) {
-                        var data = response[i];
-                        portfolio.closeAll(i, {
-                            time: (new Date()).getTime(),
-                            price: data[data.length - 1].closePrice,
-                            info: "",
-                            trade: trade,
-                            reason: "No longer watched"
-                        }, trade);
-                    }
-                    // var symbol = response.keys()[0]; 
-                    // console.log(response);
-
-                }).catch(e => {
+                try {
+                    broker.getBars(
+                        holding.symbol,
+                        function(response) {
+                            for (var i in response) {
+                                var data = response[i];
+                                portfolio.closeAll(i, {
+                                    time: (new Date()).getTime(),
+                                    price: data[data.length - 1].closePrice,
+                                    info: "",
+                                    trade: trade,
+                                    reason: "No longer watched"
+                                }, trade);
+                            }
+                        }
+                    );
+                } catch (e) {
                     console.log(e);
                     logger.error([
                         "ERROR",
-                        "Failed to get market data from alpaca",
+                        "Failed to get market data from broker",
                         e.error,
                         e.message
                     ])
-                });
+                };
 
             }
         })(index)

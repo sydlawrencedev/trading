@@ -39,19 +39,10 @@ chalk.colorize = function(val, base, str, isBG = true) {
 
 
 const settings = require('./settings');
-const Alpaca = require('@alpacahq/alpaca-trade-api')
 const dataForge = require('data-forge');
 require('data-forge-fs'); // For loading files.
 require('data-forge-indicators'); // For the moving average indicator.
 const { backtest, analyze, computeEquityCurve, computeDrawdown } = require('grademark');
-
-process.env.APCA_API_KEY_ID = settings.alpaca.key;
-process.env.APCA_API_SECRET_KEY = settings.alpaca.secret;
-process.env.APCA_API_BASE_URL = settings.alpaca.endpoint;
-
-const alpaca = new Alpaca({
-    usePolygon: false
-});
 
 var startingCash = settings.startingCapital;
 var maxActiveHoldings = 20;
@@ -63,19 +54,20 @@ var usdPerPot = startingCash / maxActiveHoldings;
 var tickers = require('./modules/tickers');
 var trader = require('./modules/trader');
 var portfolio = require('./modules/portfolio');
+var broker = require("./modules/broker");
 
 var stratName = settings.strategy;
-const strat = require('./strategies/'+stratName);
+const strat = require('./strategies/' + stratName);
 const strategy = strat.strategy;
 
 
 async function main(repeating) {
 
-    logger.setMode("status_"+settings.strategy+"_"+settings.stockFile);
+    logger.setMode("status_" + settings.strategy + "_" + settings.stockFile);
 
     logger.setup([
-        "Stocklist: "+chalk.yellow(settings.stockFile),
-        "Strategy: "+chalk.yellow(settings.strategy)
+        "Stocklist: " + chalk.yellow(settings.stockFile),
+        "Strategy: " + chalk.yellow(settings.strategy)
     ]);
 
     if (repeating !== true) {
@@ -85,21 +77,20 @@ async function main(repeating) {
     stocks = await tickers.fetch(settings.stockFile)
 
     logger.setup("Adding " + stocks.length + " stocks")
-    
-    alpaca.getAccount().then((account, err) => {
+
+    broker.getAccount(function(account) {
         if (!account) {
             console.log(chalk.red("eurgh"));
             console.log(account);
             console.log(err);
         }
-
-        alpaca.getPositions().then(async positions => {
-            await portfolio.updateFromAlpaca(account, positions);
+        broker.getPositions(async function(positions) {
+            await portfolio.updateFromBroker(account, positions);
             await trader.portfolio.logProfits(settings.tradingStart);
             await trader.portfolio.logHoldings(settings.tradingStart);
             await trader.portfolio.logStatus(settings.tradingStart);
         });
-    });
+    })
 }
 
 
@@ -108,7 +99,7 @@ async function main(repeating) {
 
 
 main().then(e => {
-    
+
 }).catch(e => {
-    logger.error(["ERROR",e.message])
+    logger.error(["ERROR", e.message])
 });

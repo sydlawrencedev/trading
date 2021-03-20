@@ -30,7 +30,6 @@ settings = {
     comparisons: ["h3ka", "rsi", "sma", "ema", "bollinger", "trendwatcher", "holdall"],
     comparisons: ["h3ka"],
     alphavantagekey: keys.alphavantage.key,
-    alpaca: keys.alpaca,
     analyze: false,
     coinApiKey: keys.coinAPI.key,
     supportPartialShares: true,
@@ -45,7 +44,11 @@ settings = {
         buy: 0,
         sell: 0
     },
-    cashBaseWeighting: 50
+    cashBaseWeighting: 50,
+    broker: {
+        name: "alpaca",
+        keys: keys.alpaca
+    }
 }
 
 if (settings.verbose) {
@@ -53,9 +56,9 @@ if (settings.verbose) {
 }
 
 if (settings.timeframe == "daily") {
-    settings.alpacaRange = "day";
+    settings.timeRange = "day";
 } else {
-    settings.alpacaRange = "minute";
+    settings.timeRange = "minute";
 }
 
 module.exports = settings;
