@@ -40,8 +40,12 @@ module.exports = {
             throw new Error("Already at max " + info.ticker + " x" + this.maxOpenPerTicker + "");
         }
 
-
         var perTrade = totalCash / (this.maxTradesOpen - openTrades.length);
+
+        var currentValue = portfolio.currentValue();
+        if (!isFinite(perTrade)) {
+            perTrade = currentValue / this.maxTradesOpen;
+        }
         if (tradedBefore) {
             perTrade = totalCash / (this.maxTradesOpen - openTrades.length + 3);
         }
@@ -53,10 +57,10 @@ module.exports = {
 
         var amount = perTrade * Math.max((info.buySignal / this.buySignalCashWeighting), 1.5)
 
-        var currentValue = portfolio.currentValue();
         if (amount > this.maxHolding * currentValue) {
             amount = this.maxHolding * currentValue
         }
+        console.log(amount, totalCash, perTrade)
         return Math.max(0, Math.min(amount, totalCash));
     },
     buySignal: indicators => {
