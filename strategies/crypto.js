@@ -11,7 +11,7 @@ module.exports = {
     maxOpenPerTicker: 30000000,
     maxHolding: 0.9, // max holding 90% of the portfolio
     buySignalCashWeighting: 50,
-    secondPurchaseStockWeighting: 0.2,
+    secondPurchaseStockWeighting: 0.5,
     firstPurchaseStockWeighting: 0.1,
     maxBuyMoreProfit: 0.50,
     maxBuyMoreLoss: -0.2,

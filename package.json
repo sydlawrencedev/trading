@@ -26,6 +26,8 @@
     "data-forge-fs": "^0.0.8",
     "data-forge-indicators": "^0.2.5",
     "data-forge-plot": "^1.0.1",
+    "coinapi-io": "^1.0.2",
+    "date-fns": "^2.16.1",
     "easy-table": "^1.1.1",
     "express": "^4.17.1",
     "ftx-api-rest": "0.0.6",
